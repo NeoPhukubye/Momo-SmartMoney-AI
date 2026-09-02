@@ -13,12 +13,13 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
 
     # MTN MoMo
-    momo_api_base_url: str = "https://sandbox.momodeveloper.mtn.com"
+    momo_api_base_url: str = "https://proxy.momoapi.mtn.com/collection"
+    momo_target_environment: str = "mtnsouthafrica"
     momo_collection_primary_key: str = ""
     momo_disbursement_primary_key: str = ""
     momo_api_user: str = ""
     momo_api_key: str = ""
-    momo_environment: str = "sandbox"
+    momo_environment: str = "mtnsouthafrica"
 
     # Africa's Talking
     at_username: str = "sandbox"
