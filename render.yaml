@@ -10,7 +10,7 @@ services:
   # The frontend is hosted on GitHub Pages (neophukubye.github.io/Momo-SmartMoney-AI),
   # so Render does not deploy the frontend (saves free build minutes).
   - type: web
-    name: smartmoney-api
+    name: momo-smartmoney-ai
     runtime: python
     pythonVersion: "3.11.9"
     plan: free
