@@ -7,7 +7,7 @@ import time
 
 from app.config import get_settings
 from app.database import init_db, engine
-from app.routers import auth, transactions, coaching, stokvel, ussd, voice, cards
+from app.routers import auth, transactions, coaching, stokvel, ussd, voice, cards, payments
 
 settings = get_settings()
 
@@ -68,6 +68,7 @@ app.include_router(ussd.router, prefix="/api/ussd", tags=["USSD"])
 app.include_router(voice.router, prefix="/api/voice", tags=["Voice"])
 app.include_router(cards.router)
 app.include_router(cards.apple_pay_router)
+app.include_router(payments.router)
 
 
 @app.get("/")
