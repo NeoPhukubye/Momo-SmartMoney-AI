@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const DEFAULT_API_URL = 'https://momo-smartmoney-ai.onrender.com'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
 })
