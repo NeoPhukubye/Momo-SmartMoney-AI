@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import GooglePayButton from "@google-pay/button-react";
+import API_BASE_URL from "../api/config";
 
 export default function GooglePayCheckout({ amount = 150.0, onSuccess }) {
   const [paymentStatus, setPaymentStatus] = useState(null);
@@ -54,7 +55,7 @@ export default function GooglePayCheckout({ amount = 150.0, onSuccess }) {
           }}
           onLoadPaymentData={async (paymentData) => {
             try {
-              const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/tap/authorize`, {
+              const res = await fetch(`${API_BASE_URL}/api/cards/tap/authorize`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
