@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Stokvel from './pages/Stokvel'
 import Transactions from './pages/Transactions'
+import Wallet from './pages/Wallet'
 import Login from './pages/Login'
 import './i18n'
 
@@ -66,6 +67,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/stokvel" element={<Stokvel />} />
+              <Route path="/wallet" element={<Wallet />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
