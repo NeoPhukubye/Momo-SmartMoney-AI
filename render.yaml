@@ -16,7 +16,7 @@ services:
     plan: free
     region: oregon
     buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30 --keep-alive 65
+    startCommand: cd backend && gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30 --keep-alive 65
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
