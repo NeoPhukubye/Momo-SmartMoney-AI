@@ -94,6 +94,55 @@ class GoogleAuthRequest(BaseModel):
     name: Optional[str] = None
 
 
+class WalletSendRequest(BaseModel):
+    amount: float
+    recipient_phone: str
+    note: Optional[str] = "SmartMoney P2P transfer"
+
+
+class PaymentRequestCreate(BaseModel):
+    amount: float
+    note: Optional[str] = None
+    payee_name: Optional[str] = None
+    payee_phone: Optional[str] = None
+    ttl_minutes: Optional[int] = 60
+
+
+class PaymentRequestResponse(BaseModel):
+    id: str
+    amount: float
+    currency: str
+    payee_name: Optional[str] = None
+    payee_phone: Optional[str] = None
+    note: Optional[str] = None
+    status: str
+    code: str
+    qr_payload: str
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StokvelInviteResponse(BaseModel):
+    id: str
+    stokvel_id: str
+    code: str
+    is_active: bool
+    uses: int
+    max_uses: Optional[int] = None
+    qr_payload: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StokvelJoinByInviteRequest(BaseModel):
+    code: str
+
+
 class CoachingQuery(BaseModel):
     message: str
     context: Optional[str] = None
