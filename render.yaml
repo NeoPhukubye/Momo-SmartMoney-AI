@@ -41,7 +41,7 @@ services:
       - key: AT_USERNAME
         value: sandbox
       - key: CORS_ORIGINS
-        value: https://smartmoney-app.onrender.com,http://localhost:5173
+        value: https://neophukube.github.io,http://localhost:5173
       - key: APP_ENV
         value: production
     healthCheckPath: /health
