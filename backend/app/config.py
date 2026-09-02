@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     mtn_default_country_code: str = "27"
     mtn_prefixes: str = "083,081,082,084,078,079"
 
+    # Google OAuth (sign-in)
+    # Comma-separated list of allowed Web Client IDs. The backend checks the
+    # `aud` claim of incoming Google ID tokens against this list.
+    google_client_ids: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"
