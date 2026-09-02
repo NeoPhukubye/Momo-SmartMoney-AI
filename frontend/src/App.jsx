@@ -59,7 +59,7 @@ function App() {
 
   return (
     <AccessibilityProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/Momo-SmartMoney-AI">
         <Layout user={user} onLogout={handleLogout}>
           <div className="page-transition">
             <Routes>
