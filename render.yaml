@@ -10,7 +10,7 @@ services:
   - type: web
     name: smartmoney-api
     runtime: python
-    pythonVersion: "3.14"
+    pythonVersion: "3.11.9"
     plan: free
     region: oregon
     buildCommand: cd backend && pip install -r requirements.txt
@@ -36,7 +36,7 @@ services:
       - key: MOMO_API_KEY
         sync: false
       - key: MOMO_ENVIRONMENT
-        value: sandbox
+        value: mtnsouthafrica
       - key: AT_API_KEY
         sync: false
       - key: AT_USERNAME
@@ -58,7 +58,7 @@ services:
     autoDeploy: true
     envVars:
       - key: VITE_API_URL
-        value: https://smartmoney-api.onrender.com
+        value: https://momo-smartmoney-ai.onrender.com
       - key: VITE_APP_NAME
         value: SmartMoney AI
     routes:
