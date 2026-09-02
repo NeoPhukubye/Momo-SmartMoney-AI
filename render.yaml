@@ -6,7 +6,9 @@ databases:
     postgresMajorVersion: "15"
 
 services:
-  # Backend API
+  # Backend API only.
+  # The frontend is hosted on GitHub Pages (neophukubye.github.io/Momo-SmartMoney-AI),
+  # so Render does not deploy the frontend (saves free build minutes).
   - type: web
     name: smartmoney-api
     runtime: python
@@ -23,58 +25,32 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.0-flash
+      - key: MOMO_BASE_URL
+        value: https://proxy.momoapi.mtn.com/collection
+      - key: MOMO_TARGET_ENVIRONMENT
+        value: mtnsouthafrica
+      - key: MOMO_ENVIRONMENT
+        value: mtnsouthafrica
       - key: MOMO_COLLECTION_PRIMARY_KEY
         sync: false
-      - key: MOMO_DISBURSEMENT_PRIMARY_KEY
+      - key: MOMO_DISBURSEMENT_KEY
         sync: false
       - key: MOMO_API_USER
         sync: false
       - key: MOMO_API_KEY
         sync: false
-      - key: MOMO_ENVIRONMENT
-        value: mtnsouthafrica
       - key: AT_API_KEY
         sync: false
       - key: AT_USERNAME
         value: sandbox
       - key: CORS_ORIGINS
-        value: https://neophukubye.github.io,http://localhost:5173
-      - key: APP_ENV
-        value: production
+        value: https://neophukubye.github.io,https://neophukubye.github.io/Momo-SmartMoney-AI,http://localhost:5173
     healthCheckPath: /health
-
-  # Frontend (Static Site)
-  - type: web
-    name: smartmoney-app
-    runtime: static
-    plan: free
-    region: oregon
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    autoDeploy: true
-    envVars:
-      - key: VITE_API_URL
-        value: https://momo-smartmoney-ai.onrender.com
-      - key: VITE_APP_NAME
-        value: SmartMoney AI
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - path: /assets/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
