@@ -1,11 +1,21 @@
-"""MTN MoMo API Integration Service (Sandbox + Production)"""
+"""MTN MoMo API Integration Service (Production MTN South Africa)."""
 import uuid
+import base64
 import httpx
+from fastapi import HTTPException
 from app.config import get_settings
 
 settings = get_settings()
 
 BASE_URL = settings.momo_api_base_url
+TARGET_ENV = settings.momo_target_environment or settings.momo_environment
+
+
+def _format_msisdn(phone_number: str) -> str:
+    msisdn = phone_number.replace("+", "").strip()
+    if msisdn.startswith("0"):
+        msisdn = "27" + msisdn[1:]
+    return msisdn
 
 
 class MoMoClient:
@@ -14,34 +24,43 @@ class MoMoClient:
         self.disbursement_key = settings.momo_disbursement_primary_key
         self.api_user = settings.momo_api_user
         self.api_key = settings.momo_api_key
-        self.environment = settings.momo_environment
+        self.environment = TARGET_ENV
         self._token_cache: dict[str, str] = {}
 
     async def _get_token(self, product: str = "collection") -> str:
-        """Get OAuth token for MoMo API."""
+        """Step 1: Get OAuth token via Basic Auth."""
         if product in self._token_cache:
             return self._token_cache[product]
 
         sub_key = self.collection_key if product == "collection" else self.disbursement_key
-        url = f"{BASE_URL}/{product}/token/"
+        url = f"{BASE_URL}/token/"
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
                 url,
-                auth=(self.api_user, self.api_key),
-                headers={"Ocp-Apim-Subscription-Key": sub_key},
+                headers={
+                    "Ocp-Apim-Subscription-Key": sub_key,
+                    "X-Target-Environment": self.environment,
+                    "Authorization": f"Basic {base64.b64encode(f'{self.api_user}:{self.api_key}'.encode()).decode()}",
+                },
             )
-            response.raise_for_status()
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"MoMo Token Error: {response.text}",
+                )
             token = response.json()["access_token"]
             self._token_cache[product] = token
             return token
 
     async def request_to_pay(
-        self, amount: float, phone_number: str, currency: str = "ZAR", payer_message: str = ""
+        self, amount: float, phone_number: str, currency: str = "ZAR",
+        payer_message: str = "MoMo SmartMoney",
     ) -> dict:
-        """Request payment from a user (Collection API)."""
+        """Step 2: Initiate Request to Pay (expects 202 Accepted)."""
         token = await self._get_token("collection")
         reference_id = str(uuid.uuid4())
+        msisdn = _format_msisdn(phone_number)
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -51,52 +70,57 @@ class MoMoClient:
             "Content-Type": "application/json",
         }
 
+        amount_str = str(int(amount) if float(amount).is_integer() else amount)
         payload = {
-            "amount": str(amount),
+            "amount": amount_str,
             "currency": currency,
-            "externalId": reference_id,
-            "payer": {"partyIdType": "MSISDN", "partyId": phone_number},
-            "payerMessage": payer_message or "SmartMoney payment",
-            "payeeNote": "MoMo SmartMoney AI",
+            "externalId": str(uuid.uuid4().int)[:8],
+            "payer": {"partyIdType": "MSISDN", "partyId": msisdn},
+            "payerMessage": payer_message,
+            "payeeNote": payer_message,
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
-                f"{BASE_URL}/collection/v1_0/requesttopay",
+                f"{BASE_URL}/v1_0/requesttopay",
                 json=payload,
                 headers=headers,
             )
-            return {
-                "reference_id": reference_id,
-                "status_code": response.status_code,
-                "success": response.status_code == 202,
-            }
+            if response.status_code != 202:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"MoMo RequestToPay Error: {response.text}",
+                )
+            return {"reference_id": reference_id, "status": "PENDING"}
 
     async def check_payment_status(self, reference_id: str) -> dict:
-        """Check status of a payment request."""
+        """Step 3: Check transaction status."""
         token = await self._get_token("collection")
-
         headers = {
             "Authorization": f"Bearer {token}",
             "X-Target-Environment": self.environment,
             "Ocp-Apim-Subscription-Key": self.collection_key,
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
-                f"{BASE_URL}/collection/v1_0/requesttopay/{reference_id}",
+                f"{BASE_URL}/v1_0/requesttopay/{reference_id}",
                 headers=headers,
             )
-            if response.status_code == 200:
-                return response.json()
-            return {"status": "FAILED", "reason": f"HTTP {response.status_code}"}
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"MoMo Status Error: {response.text}",
+                )
+            return response.json()
 
     async def transfer(
         self, amount: float, phone_number: str, currency: str = "ZAR", payee_note: str = ""
     ) -> dict:
-        """Send money to a user (Disbursement API)."""
+        """Disbursement API: send money to a user."""
         token = await self._get_token("disbursement")
         reference_id = str(uuid.uuid4())
+        msisdn = _format_msisdn(phone_number)
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -107,17 +131,17 @@ class MoMoClient:
         }
 
         payload = {
-            "amount": str(amount),
+            "amount": str(int(float(amount)) if float(amount).is_integer() else amount),
             "currency": currency,
             "externalId": reference_id,
-            "payee": {"partyIdType": "MSISDN", "partyId": phone_number},
+            "payee": {"partyIdType": "MSISDN", "partyId": msisdn},
             "payerMessage": "MoMo SmartMoney AI",
             "payeeNote": payee_note or "SmartMoney transfer",
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
-                f"{BASE_URL}/disbursement/v1_0/transfer",
+                f"{BASE_URL.replace('/collection', '/disbursement')}/v1_0/transfer",
                 json=payload,
                 headers=headers,
             )
@@ -128,17 +152,15 @@ class MoMoClient:
             }
 
     async def get_balance(self) -> dict:
-        """Get account balance."""
         token = await self._get_token("collection")
         headers = {
             "Authorization": f"Bearer {token}",
             "X-Target-Environment": self.environment,
             "Ocp-Apim-Subscription-Key": self.collection_key,
         }
-
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
-                f"{BASE_URL}/collection/v1_0/account/balance",
+                f"{BASE_URL}/v1_0/account/balance",
                 headers=headers,
             )
             if response.status_code == 200:
@@ -146,17 +168,16 @@ class MoMoClient:
             return {"availableBalance": "0", "currency": "ZAR"}
 
     async def validate_account(self, phone_number: str) -> bool:
-        """Check if a phone number is registered on MoMo."""
+        msisdn = _format_msisdn(phone_number)
         token = await self._get_token("collection")
         headers = {
             "Authorization": f"Bearer {token}",
             "X-Target-Environment": self.environment,
             "Ocp-Apim-Subscription-Key": self.collection_key,
         }
-
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
-                f"{BASE_URL}/collection/v1_0/accountholder/msisdn/{phone_number}/active",
+                f"{BASE_URL}/v1_0/accountholder/msisdn/{msisdn}/active",
                 headers=headers,
             )
             return response.status_code == 200
