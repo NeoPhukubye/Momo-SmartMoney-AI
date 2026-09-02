@@ -10,6 +10,7 @@ services:
   - type: web
     name: smartmoney-api
     runtime: python
+    pythonVersion: "3.11"
     plan: free
     region: oregon
     buildCommand: cd backend && pip install -r requirements.txt
@@ -41,7 +42,7 @@ services:
       - key: AT_USERNAME
         value: sandbox
       - key: CORS_ORIGINS
-        value: https://neophukube.github.io,http://localhost:5173
+        value: https://neophukubye.github.io,http://localhost:5173
       - key: APP_ENV
         value: production
     healthCheckPath: /health
