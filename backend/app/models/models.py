@@ -90,6 +90,7 @@ class Stokvel(Base):
     is_active = Column(Boolean, default=True)
 
     members = relationship("StokvelMember", back_populates="stokvel")
+    invites = relationship("StokvelInvite", back_populates="stokvel")
 
 
 class StokvelMember(Base):
@@ -176,7 +177,64 @@ class WalletTransaction(Base):
     counterparty_name = Column(String)
     reference = Column(String)  # MoMo reference id, stokvel id, scan token, etc.
     note = Column(String)
-    source = Column(String, default="momo")  # momo, scan, google, manual
+    source = Column(String, default="momo")  # momo, scan, google, manual, p2p, request
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     wallet = relationship("Wallet", back_populates="transactions")
+
+
+class PaymentRequestStatus(str, enum.Enum):
+    OPEN = "open"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+
+class PaymentRequest(Base):
+    """A 'request money' QR. The owner publishes it; anyone with the code can pay."""
+
+    __tablename__ = "payment_requests"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    requester_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="ZAR")
+    payee_name = Column(String)  # optional display name
+    note = Column(String)
+    payee_phone = Column(String)  # optional routing hint (who should pay)
+    status = Column(SQLEnum(PaymentRequestStatus), default=PaymentRequestStatus.OPEN)
+    paid_by_id = Column(String, ForeignKey("users.id"), nullable=True)
+    paid_txn_id = Column(String, ForeignKey("wallet_transactions.id"), nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    requester = relationship("User", foreign_keys=[requester_id])
+    paid_by = relationship("User", foreign_keys=[paid_by_id])
+
+
+class StokvelInvite(Base):
+    """A QR/shareable invite for a Stokvel. Code is short and human-typable."""
+
+    __tablename__ = "stokvel_invites"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    stokvel_id = Column(String, ForeignKey("stokvels.id"), nullable=False, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    is_active = Column(Boolean, default=True)
+    max_uses = Column(Integer, nullable=True)
+    uses = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    stokvel = relationship("Stokvel", back_populates="invites")
+
+
+class UserDirectory(Base):
+    """A small P2P contacts / allow-list table so we can find users by phone."""
+
+    __tablename__ = "user_directory"
+
+    phone_number = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    display_name = Column(String)
+    last_seen_at = Column(DateTime, default=datetime.utcnow)
