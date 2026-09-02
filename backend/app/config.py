@@ -1,0 +1,46 @@
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+
+class Settings(BaseSettings):
+    app_name: str = "MoMo SmartMoney AI"
+    app_env: str = "development"
+    secret_key: str = "dev-secret-change-me"
+    database_url: str = "sqlite+aiosqlite:///./smartmoney.db"
+
+    # Google Gemini AI
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+
+    # MTN MoMo
+    momo_api_base_url: str = "https://sandbox.momodeveloper.mtn.com"
+    momo_collection_primary_key: str = ""
+    momo_disbursement_primary_key: str = ""
+    momo_api_user: str = ""
+    momo_api_key: str = ""
+    momo_environment: str = "sandbox"
+
+    # Africa's Talking
+    at_username: str = "sandbox"
+    at_api_key: str = ""
+
+    # CORS
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    # JWT
+    access_token_expire_minutes: int = 60 * 24
+
+    # Rate limiting
+    rate_limit_per_minute: int = 30
+
+    # Render
+    render: bool = False
+    port: int = 8000
+
+    class Config:
+        env_file = ".env"
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
