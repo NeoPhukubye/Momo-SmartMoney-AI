@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react'
-import { Users, Plus, ArrowRight, PiggyBank, X, Phone, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { Users, Plus, ArrowRight, PiggyBank, X, Phone, CheckCircle2, ShieldCheck, QrCode, Hash } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAccessibility } from '../context/AccessibilityContext'
 import api from '../services/api'
+import QRGenerator from '../components/QRGenerator'
 
 export default function Stokvel() {
   const { t } = useTranslation()
   const { announce } = useAccessibility()
   const [stokvels, setStokvels] = useState([])
   const [showCreate, setShowCreate] = useState(false)
+  const [showJoin, setShowJoin] = useState(false)
+  const [inviteFor, setInviteFor] = useState(null)
+  const [joinCode, setJoinCode] = useState('')
   const [form, setForm] = useState({ name: '', contribution_amount: '', frequency: 'monthly' })
   const [loading, setLoading] = useState(true)
   const [createError, setCreateError] = useState('')
+  const [joinError, setJoinError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     loadStokvels()
@@ -62,6 +68,34 @@ export default function Stokvel() {
     }
   }
 
+  const generateInvite = async (stokvelId, stokvelName) => {
+    setInviteFor({ id: stokvelId, name: stokvelName, code: null, qr: null, loading: true, error: '' })
+    try {
+      const { data } = await api.post(`/api/stokvels/${stokvelId}/invite`)
+      setInviteFor({ id: stokvelId, name: stokvelName, code: data.code, qr: data.qr_payload, loading: false, error: '' })
+      announce('Invite code ready')
+    } catch (err) {
+      setInviteFor({ id: stokvelId, name: stokvelName, code: null, qr: null, loading: false, error: err.response?.data?.detail || t('common.error') })
+    }
+  }
+
+  const submitJoin = async (e) => {
+    e.preventDefault()
+    setJoinError('')
+    setJoining(true)
+    try {
+      const { data } = await api.post('/api/stokvels/join-by-invite', { code: joinCode })
+      setShowJoin(false)
+      setJoinCode('')
+      announce(`Joined ${data.name}`)
+      loadStokvels()
+    } catch (err) {
+      setJoinError(err.response?.data?.detail || t('common.error'))
+    } finally {
+      setJoining(false)
+    }
+  }
+
   const totalMembers = stokvels.reduce((acc, s) => acc + (s.member_count || 0), 0)
   const totalMtnMembers = stokvels.reduce((acc, s) => acc + (s.mtn_member_count || 0), 0)
   const totalContrib = stokvels.reduce((acc, s) => acc + (s.contribution_amount || 0) * (s.member_count || 0), 0)
@@ -98,16 +132,26 @@ export default function Stokvel() {
         </div>
       </section>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <h3 className="font-display font-bold text-mtn-dark">Your groups</h3>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 bg-mtn-blue text-white text-sm font-semibold px-3.5 py-2 rounded-xl shadow-soft hover:bg-mtn-blue-light lift focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none"
-          aria-label={t('stokvel.new')}
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          {t('stokvel.new')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowJoin(true)}
+            className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold px-3.5 py-2 rounded-xl shadow-soft hover:bg-slate-50 lift focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none"
+            aria-label="Join a Stokvel by invite code"
+          >
+            <Hash className="w-4 h-4" aria-hidden="true" />
+            Join
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-1.5 bg-mtn-blue text-white text-sm font-semibold px-3.5 py-2 rounded-xl shadow-soft hover:bg-mtn-blue-light lift focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none"
+            aria-label={t('stokvel.new')}
+          >
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            {t('stokvel.new')}
+          </button>
+        </div>
       </div>
 
       {/* MTN requirement notice */}
@@ -294,19 +338,107 @@ export default function Stokvel() {
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => contribute(s.id)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-mtn-blue hover:text-mtn-blue-light focus-visible:underline focus:outline-none rounded px-2 py-1.5 hover:bg-mtn-blue/5 transition"
-                      aria-label={`${t('stokvel.record_contribution')} - ${s.name}`}
-                    >
-                      {t('stokvel.record_contribution')}
-                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => generateInvite(s.id, s.name)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-mtn-blue hover:text-mtn-blue-light focus-visible:underline focus:outline-none rounded px-2 py-1.5 hover:bg-mtn-blue/5 transition"
+                        aria-label={`Generate invite for ${s.name}`}
+                      >
+                        <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
+                        Invite
+                      </button>
+                      <button
+                        onClick={() => contribute(s.id)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-mtn-blue hover:text-mtn-blue-light focus-visible:underline focus:outline-none rounded px-2 py-1.5 hover:bg-mtn-blue/5 transition"
+                        aria-label={`${t('stokvel.record_contribution')} - ${s.name}`}
+                      >
+                        {t('stokvel.record_contribution')}
+                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Invite modal */}
+      {inviteFor && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-lift animate-slide-up">
+            <button type="button" onClick={() => setInviteFor(null)} className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none" aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
+            <div className="mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-mtn-blue to-mtn-blue-light flex items-center justify-center mb-3">
+                <QrCode className="w-6 h-6 text-white" aria-hidden="true" />
+              </div>
+              <h3 className="font-display text-xl font-bold text-mtn-dark">Invite to {inviteFor.name}</h3>
+              <p className="text-sm text-slate-500">Share this QR or the 6-character code.</p>
+            </div>
+
+            {inviteFor.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <span className="inline-block w-6 h-6 border-2 border-slate-200 border-t-mtn-blue rounded-full animate-spin" aria-hidden="true" />
+              </div>
+            ) : inviteFor.error ? (
+              <div className="px-3 py-2.5 rounded-xl bg-red-50 border border-red-100" role="alert">
+                <p className="text-sm text-red-700">{inviteFor.error}</p>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <QRGenerator payload={inviteFor.qr} label={inviteFor.code} size={200} />
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Code</p>
+                <p className="font-display text-3xl font-extrabold text-mtn-blue tracking-widest">{inviteFor.code}</p>
+                <p className="text-xs text-slate-500">New members can also dial <span className="font-mono font-semibold">*141*8#</span> and choose "Join Stokvel".</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Join by code modal */}
+      {showJoin && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
+          <form onSubmit={submitJoin} className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-lift animate-slide-up">
+            <button type="button" onClick={() => { setShowJoin(false); setJoinError('') }} className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none" aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
+            <div className="mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-mtn-yellow to-mtn-yellow-deep flex items-center justify-center mb-3">
+                <Hash className="w-6 h-6 text-mtn-blue-deep" aria-hidden="true" />
+              </div>
+              <h3 className="font-display text-xl font-bold text-mtn-dark">Join a Stokvel</h3>
+              <p className="text-sm text-slate-500">Enter the 6-character code shared by your group admin.</p>
+            </div>
+            <label htmlFor="invite-code" className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Invite code</label>
+            <input
+              id="invite-code"
+              required
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              maxLength={20}
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-lg font-display font-bold tracking-widest text-center focus:bg-white focus:border-mtn-blue focus:ring-4 focus:ring-mtn-blue/10 outline-none transition"
+              placeholder="ABC123"
+              autoFocus
+            />
+            {joinError && (
+              <div className="mt-3 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100" role="alert" aria-live="assertive">
+                <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" aria-hidden="true" />
+                <p className="text-sm text-red-700">{joinError}</p>
+              </div>
+            )}
+            <div className="flex gap-2 mt-5">
+              <button type="submit" disabled={joining} className="flex-1 bg-gradient-to-r from-mtn-yellow to-mtn-yellow-deep text-mtn-blue-deep font-bold py-3 rounded-2xl shadow-glow-yellow hover:shadow-lift disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-mtn-blue/30 focus:outline-none transition">
+                {joining ? t('auth.please_wait') : 'Join Stokvel'}
+              </button>
+              <button type="button" onClick={() => { setShowJoin(false); setJoinError('') }} className="flex-1 bg-slate-100 text-slate-700 font-semibold py-3 rounded-2xl hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none transition">
+                {t('common.cancel')}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
