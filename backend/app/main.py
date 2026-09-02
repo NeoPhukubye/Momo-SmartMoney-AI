@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
 import logging
@@ -28,9 +29,14 @@ async def lifespan(app: FastAPI):
     # (including /health) with 502. Log it and start degraded instead.
     try:
         await init_db()
+        app.state.db_ready = True
         logger.info("Database initialized")
     except Exception:
-        logger.exception("Database initialization failed - starting in degraded mode")
+        app.state.db_ready = False
+        logger.exception(
+            "DB INIT FAILED - schema was NOT created. Every request that reads or "
+            "writes a table will return 500 until this is fixed."
+        )
     yield
     try:
         await engine.dispose()
@@ -48,13 +54,34 @@ app = FastAPI(
     redoc_url="/redoc" if settings.app_env != "production" else None,
 )
 
+_allowed_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Response-Time"],
 )
+
+
+# Starlette's CORSMiddleware never gets to add headers to a response that was
+# never produced: an unhandled exception propagates straight past it and the
+# browser reports "MissingAllowOriginHeader" instead of the real 500. Turning
+# every unhandled exception into a real JSONResponse here lets the CORS
+# middleware wrap it on the way out, so the client sees the actual error.
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled error on {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "path": request.url.path,
+            "error_type": type(exc).__name__,
+        },
+    )
 
 
 # Request timing middleware
@@ -107,15 +134,21 @@ async def health():
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+            # A live connection is not enough: if create_all failed at boot the
+            # tables are missing and every real endpoint 500s while SELECT 1
+            # still succeeds. Probe an actual table.
+            await conn.execute(text("SELECT 1 FROM users LIMIT 1"))
     except Exception:
         db_status = "unhealthy"
 
+    schema_ready = getattr(app.state, "db_ready", None)
     status = "healthy" if db_status == "healthy" else "degraded"
     return {
         "status": status,
         "service": "smartmoney-api",
         "version": "2.0.0",
         "database": db_status,
+        "schema_ready": schema_ready,
         "ai": "gemini" if settings.gemini_api_key else "fallback",
         "timestamp": datetime.utcnow().isoformat(),
     }
