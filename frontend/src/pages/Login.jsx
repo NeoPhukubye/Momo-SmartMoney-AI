@@ -3,6 +3,7 @@ import { Shield, Phone, Lock, User as UserIcon, Sparkles, ArrowRight } from 'luc
 import { useTranslation } from 'react-i18next'
 import { useAccessibility } from '../context/AccessibilityContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import GoogleSignIn from '../components/GoogleSignIn'
 import api from '../services/api'
 
 export default function Login({ onLogin }) {
@@ -151,6 +152,19 @@ export default function Login({ onLogin }) {
                 </span>
                 <span className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
               </button>
+
+              <div className="mt-3 flex items-center gap-3" aria-hidden="true">
+                <span className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">or continue with Google</span>
+                <span className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              <div className="pt-1">
+                <GoogleSignIn
+                  onLogin={onLogin}
+                  onError={(err) => setError(err.response?.data?.detail || t('common.error'))}
+                />
+              </div>
 
               <p className="text-center text-sm text-slate-500 pt-1">
                 {isRegister ? t('auth.already_have_account') : t('auth.no_account')}{' '}
