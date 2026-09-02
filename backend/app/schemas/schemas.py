@@ -21,6 +21,9 @@ class UserResponse(BaseModel):
     name: str
     language: str
     created_at: datetime
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
+    auth_provider: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -82,6 +85,13 @@ class StokvelResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class GoogleAuthRequest(BaseModel):
+    """Credential returned by Google Identity Services on the client."""
+    credential: str  # the ID token (JWT)
+    phone_number: Optional[str] = None  # required for new MTN-gated users
+    name: Optional[str] = None
 
 
 class CoachingQuery(BaseModel):
