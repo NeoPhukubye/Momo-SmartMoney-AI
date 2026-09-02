@@ -21,18 +21,18 @@ export default function Layout({ user, onLogout, children }) {
   const bgClass = settings.highContrast
     ? 'bg-black text-white'
     : settings.darkMode
-    ? 'bg-gray-900 text-white'
-    : 'bg-mtn-light text-gray-900';
+    ? 'bg-mesh-dark text-white'
+    : 'bg-mesh-light text-slate-900';
 
-  const headerClass = settings.highContrast
-    ? 'bg-yellow-400 text-black'
-    : 'bg-mtn-yellow';
+  const headerBg = settings.highContrast
+    ? 'bg-yellow-400 text-black border-yellow-400'
+    : 'glass border-white/40';
 
-  const navBgClass = settings.highContrast
+  const navBg = settings.highContrast
     ? 'bg-black border-yellow-400'
     : settings.darkMode
-    ? 'bg-gray-900 border-gray-700'
-    : 'bg-white border-gray-200';
+    ? 'glass-dark border-white/10'
+    : 'glass border-white/50';
 
   return (
     <div className={`min-h-screen flex flex-col ${bgClass}`}>
@@ -51,26 +51,37 @@ export default function Layout({ user, onLogout, children }) {
       </a>
 
       {/* Header */}
-      <header className={`${headerClass} px-4 py-3 flex items-center justify-between shadow-sm`} role="banner">
-        <div className="flex items-center gap-2">
-          <Shield className="w-6 h-6 text-mtn-blue" aria-hidden="true" />
-          <h1 className="text-lg font-bold text-mtn-blue">SmartMoney AI</h1>
+      <header
+        className={`sticky top-0 z-30 ${headerBg} px-4 py-3 flex items-center justify-between border-b`}
+        role="banner"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="relative w-9 h-9 rounded-2xl bg-gradient-to-br from-mtn-yellow to-mtn-yellow-deep flex items-center justify-center shadow-glow-yellow">
+            <Shield className="w-4 h-4 text-mtn-blue-deep" aria-hidden="true" />
+          </div>
+          <div className="leading-tight">
+            <h1 className="font-display font-extrabold text-mtn-blue text-base tracking-tight">SmartMoney</h1>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mtn-blue/70">AI Coach</p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setA11yOpen(true)}
             aria-label={t('a11y.accessibility_settings')}
-            className="p-2 rounded-full hover:bg-white/20 text-mtn-blue transition"
+            className="p-2 rounded-xl hover:bg-white/30 text-mtn-blue transition focus-visible:ring-2 focus-visible:ring-mtn-blue focus:outline-none"
           >
             <Accessibility className="w-5 h-5" aria-hidden="true" />
           </button>
           <LanguageSwitcher />
-          <span className="text-sm text-mtn-dark font-medium hidden sm:inline" aria-label={`User: ${user?.name}`}>
+          <span
+            className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-mtn-yellow/20 text-mtn-blue text-xs font-semibold border border-mtn-yellow/30"
+            aria-label={`User: ${user?.name}`}
+          >
             {user?.name}
           </span>
           <button
             onClick={onLogout}
-            className="text-mtn-blue hover:text-red-600 p-2 transition"
+            className="p-2 rounded-xl hover:bg-red-50 text-mtn-blue hover:text-red-600 transition focus-visible:ring-2 focus-visible:ring-red-500 focus:outline-none"
             aria-label={t('common.logout')}
           >
             <LogOut className="w-5 h-5" aria-hidden="true" />
@@ -81,7 +92,7 @@ export default function Layout({ user, onLogout, children }) {
       {/* Main Content */}
       <main
         id="main-content"
-        className="flex-1 p-4 pb-20 max-w-md mx-auto w-full"
+        className="flex-1 p-4 pb-28 max-w-md mx-auto w-full"
         role="main"
         aria-label={t('a11y.main_content')}
         tabIndex={-1}
@@ -89,37 +100,37 @@ export default function Layout({ user, onLogout, children }) {
         {children}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Floating Bottom Navigation */}
       <nav
         id="bottom-nav"
-        className={`fixed bottom-0 left-0 right-0 ${navBgClass} border-t px-4 py-2 safe-bottom`}
+        className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-40 ${navBg} rounded-3xl px-2 py-2 shadow-lift max-w-[calc(100%-2rem)]`}
         role="navigation"
         aria-label={t('a11y.navigation')}
       >
-        <div className="max-w-md mx-auto flex justify-around">
+        <div className="flex justify-around items-center gap-1">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 text-xs transition-colors py-1 px-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-mtn-yellow ${
+                `relative flex flex-col items-center gap-0.5 text-[10px] transition-all py-1.5 px-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-mtn-yellow ${
                   isActive
                     ? settings.highContrast
-                      ? 'text-yellow-400 font-bold'
-                      : 'text-mtn-blue font-bold'
+                      ? 'text-yellow-400 font-bold bg-yellow-400/10'
+                      : 'text-mtn-blue-deep font-bold bg-gradient-to-br from-mtn-yellow to-mtn-yellow-deep shadow-glow-yellow'
                     : settings.highContrast
                     ? 'text-white'
                     : settings.darkMode
-                    ? 'text-gray-400'
-                    : 'text-gray-500'
+                    ? 'text-slate-400 hover:text-white'
+                    : 'text-slate-500 hover:text-mtn-blue'
                 }`
               }
               aria-label={label}
             >
               {({ isActive }) => (
                 <>
-                  <Icon className="w-5 h-5" aria-hidden="true" />
-                  <span aria-hidden="true">{label}</span>
+                  <Icon className={`w-4 h-4 transition-transform ${isActive ? 'scale-110' : ''}`} aria-hidden="true" />
+                  <span className="font-semibold tracking-wide">{label}</span>
                   {isActive && <span className="sr-only">({t('a11y.current_page')})</span>}
                 </>
               )}

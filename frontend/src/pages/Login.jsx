@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Shield, Phone } from 'lucide-react'
+import { Shield, Phone, Lock, User as UserIcon, Sparkles, ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAccessibility } from '../context/AccessibilityContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
@@ -35,114 +35,181 @@ export default function Login({ onLogin }) {
     }
   }
 
+  const bgClass = settings.darkMode ? 'bg-mesh-dark' : 'bg-mesh-light'
+
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${settings.darkMode ? 'bg-gray-900' : 'bg-mtn-light'}`}>
-      <div className="w-full max-w-sm">
-        {/* Language Switcher at top */}
-        <div className="flex justify-end mb-4">
+    <div className={`min-h-screen relative overflow-hidden ${bgClass}`}>
+      {/* Decorative orbs */}
+      <div className="pointer-events-none absolute -top-32 -left-24 w-80 h-80 rounded-full bg-mtn-yellow/30 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute top-1/3 -right-24 w-96 h-96 rounded-full bg-mtn-blue/20 blur-3xl" aria-hidden="true" />
+
+      <div className="relative min-h-screen flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between p-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-mtn-yellow to-mtn-yellow-deep flex items-center justify-center shadow-glow-yellow">
+              <Shield className="w-5 h-5 text-mtn-blue-deep" aria-hidden="true" />
+            </div>
+            <div className="leading-tight">
+              <p className="font-display font-extrabold text-mtn-blue text-lg tracking-tight">SmartMoney</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mtn-blue/60">AI Coach</p>
+            </div>
+          </div>
           <LanguageSwitcher />
         </div>
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-mtn-yellow rounded-full mb-3">
-            <Shield className="w-8 h-8 text-mtn-blue" aria-hidden="true" />
+        {/* Hero */}
+        <div className="px-6 pt-6 pb-4 max-w-md w-full mx-auto animate-fade-in">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 backdrop-blur border border-white/60 shadow-soft text-[11px] font-semibold text-mtn-blue mb-4">
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Your pocket financial coach</span>
           </div>
-          <h1 className="text-2xl font-bold text-mtn-dark">{t('common.home') === 'Home' ? 'SmartMoney AI' : 'SmartMoney AI'}</h1>
-          <p className={`text-sm mt-1 ${settings.darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('auth.tagline')}</p>
+          <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-mtn-blue leading-[1.05]">
+            Spend smarter.<br />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-mtn-yellow-deep via-mtn-yellow to-mtn-yellow-deep">
+              Save together.
+            </span>
+          </h1>
+          <p className="mt-3 text-sm text-slate-600 max-w-sm">{t('auth.tagline')}</p>
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className={`rounded-xl p-6 shadow-sm space-y-4 ${settings.darkMode ? 'bg-gray-800' : 'bg-white'}`}
-          aria-label={isRegister ? t('auth.create_account') : t('auth.welcome_back')}
-        >
-          <h2 className="text-lg font-semibold text-center">
-            {isRegister ? t('auth.create_account') : t('auth.welcome_back')}
-          </h2>
-
-          {isRegister && (
-            <div>
-              <label htmlFor="name" className={`text-sm ${settings.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                {t('auth.full_name')}
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('auth.name_placeholder')}
-                className="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-mtn-yellow outline-none"
-                required
-                autoComplete="name"
-              />
+        {/* Form card */}
+        <div className="flex-1 px-5 pb-8 max-w-md w-full mx-auto w-full">
+          <div className="card-surface p-6 sm:p-7 animate-slide-up shadow-lift">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-display text-xl font-bold text-mtn-dark">
+                {isRegister ? t('auth.create_account') : t('auth.welcome_back')}
+              </h2>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-mtn-blue/60">
+                {isRegister ? 'Step 1 of 1' : 'Sign in'}
+              </div>
             </div>
-          )}
 
-          <div>
-            <label htmlFor="phone" className={`text-sm ${settings.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              {t('auth.phone_number')}
-            </label>
-            <div className="flex items-center gap-2 mt-1">
-              <Phone className="w-4 h-4 text-gray-400" aria-hidden="true" />
-              <input
+            <form onSubmit={handleSubmit} className="space-y-4" aria-label={isRegister ? t('auth.create_account') : t('auth.welcome_back')}>
+              {isRegister && (
+                <Field
+                  id="name"
+                  label={t('auth.full_name')}
+                  icon={UserIcon}
+                  type="text"
+                  value={name}
+                  onChange={setName}
+                  placeholder={t('auth.name_placeholder')}
+                  autoComplete="name"
+                />
+              )}
+
+              <Field
                 id="phone"
+                label={t('auth.phone_number')}
+                icon={Phone}
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={setPhone}
                 placeholder={t('auth.phone_placeholder')}
-                className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-mtn-yellow outline-none"
-                required
                 autoComplete="tel"
                 inputMode="tel"
               />
-            </div>
+
+              <Field
+                id="pin"
+                label={t('auth.pin')}
+                icon={Lock}
+                type="password"
+                value={pin}
+                onChange={setPin}
+                placeholder={t('auth.enter_pin')}
+                maxLength={4}
+                autoComplete="current-password"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+              />
+
+              {error && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100" role="alert" aria-live="assertive">
+                  <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" aria-hidden="true" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-mtn-yellow to-mtn-yellow-deep text-mtn-blue-deep font-extrabold py-3.5 px-4 shadow-glow-yellow hover:shadow-lift disabled:opacity-60 disabled:cursor-not-allowed transition-all focus-visible:ring-4 focus-visible:ring-mtn-blue/30 focus:outline-none"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <Spinner /> {t('auth.please_wait')}
+                    </>
+                  ) : (
+                    <>
+                      {isRegister ? t('auth.create_account') : t('common.login')}
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </>
+                  )}
+                </span>
+                <span className="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+              </button>
+
+              <p className="text-center text-sm text-slate-500 pt-1">
+                {isRegister ? t('auth.already_have_account') : t('auth.no_account')}{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsRegister(!isRegister)}
+                  className="text-mtn-blue font-semibold hover:text-mtn-blue-light focus-visible:underline focus:outline-none"
+                >
+                  {isRegister ? t('common.login') : t('auth.register')}
+                </button>
+              </p>
+            </form>
           </div>
 
-          <div>
-            <label htmlFor="pin" className={`text-sm ${settings.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              {t('auth.pin')}
-            </label>
-            <input
-              id="pin"
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder={t('auth.enter_pin')}
-              maxLength={4}
-              className="w-full mt-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-mtn-yellow outline-none"
-              required
-              autoComplete="current-password"
-              inputMode="numeric"
-              pattern="[0-9]{4}"
-            />
+          {/* Trust strip */}
+          <div className="mt-6 grid grid-cols-3 gap-2 text-center animate-fade-in">
+            {[
+              { k: 'Bank-grade', v: 'security' },
+              { k: '16', v: 'languages' },
+              { k: 'AI', v: 'coaching' },
+            ].map((it) => (
+              <div key={it.k} className="rounded-2xl bg-white/60 backdrop-blur border border-white/60 px-3 py-2.5">
+                <p className="font-display font-bold text-mtn-blue text-sm">{it.k}</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500">{it.v}</p>
+              </div>
+            ))}
           </div>
-
-          {error && (
-            <p className="text-red-500 text-sm" role="alert" aria-live="assertive">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-mtn-yellow text-mtn-blue font-bold py-3 rounded-lg hover:bg-yellow-400 disabled:opacity-50 transition focus-visible:ring-2 focus-visible:ring-mtn-blue focus:outline-none"
-          >
-            {loading ? t('auth.please_wait') : isRegister ? t('auth.create_account') : t('common.login')}
-          </button>
-
-          <p className="text-center text-sm text-gray-500">
-            {isRegister ? t('auth.already_have_account') : t('auth.no_account')}{' '}
-            <button
-              type="button"
-              onClick={() => setIsRegister(!isRegister)}
-              className="text-mtn-blue font-medium focus-visible:underline focus:outline-none"
-            >
-              {isRegister ? t('common.login') : t('auth.register')}
-            </button>
-          </p>
-        </form>
+        </div>
       </div>
     </div>
+  )
+}
+
+function Field({ id, label, icon: Icon, type = 'text', value, onChange, placeholder, ...rest }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">
+        {label}
+      </label>
+      <div className="relative group">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-mtn-blue transition" aria-hidden="true">
+          <Icon className="w-4 h-4" />
+        </span>
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full pl-11 pr-3 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-mtn-blue focus:ring-4 focus:ring-mtn-blue/10 outline-none transition"
+          {...rest}
+        />
+      </div>
+    </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <span className="inline-block w-4 h-4 border-2 border-mtn-blue-deep/30 border-t-mtn-blue-deep rounded-full animate-spin" aria-hidden="true" />
   )
 }

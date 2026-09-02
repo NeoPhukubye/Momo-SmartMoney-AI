@@ -89,7 +89,7 @@ export default function LanguageSwitcher() {
           ref={panelRef}
           role="dialog"
           aria-label={t('a11y.switch_language')}
-          className="absolute right-0 top-full mt-2 bg-white shadow-2xl rounded-xl overflow-hidden z-[90] w-72 max-h-[70vh] flex flex-col border border-gray-100"
+          className="absolute right-0 top-full mt-2 glass shadow-lift rounded-2xl overflow-hidden z-[90] w-72 max-h-[70vh] flex flex-col border border-white/40 animate-fade-in"
         >
           {/* Search */}
           <div className="p-3 border-b border-gray-100">
@@ -100,7 +100,7 @@ export default function LanguageSwitcher() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('common.search') + '...'}
-                className="w-full pl-9 pr-8 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-mtn-yellow outline-none"
+                className="w-full pl-9 pr-8 py-2 text-sm rounded-xl bg-white/70 border border-slate-200 focus:ring-2 focus:ring-mtn-yellow focus:border-mtn-yellow outline-none transition"
                 aria-label={t('common.search')}
                 autoFocus
               />
