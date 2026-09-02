@@ -60,6 +60,7 @@ services:
         sync: false
       - key: AT_USERNAME
         value: sandbox
-      # Origins only - no paths, no trailing slashes.
+      - key: GOOGLE_CLIENT_IDS
+        value: 930989766959-i76ac8irvvtl5qjgioi7ha32b3hl7it1.apps.googleusercontent.com
       - key: CORS_ORIGINS
-        value: https://neophukubye.github.io,http://localhost:5173
+        value: https://neophukubye.github.io,https://neophukubye.github.io/Momo-SmartMoney-AI,http://localhost:5173
