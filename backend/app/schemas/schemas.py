@@ -76,6 +76,8 @@ class StokvelResponse(BaseModel):
     next_contribution_date: Optional[datetime]
     next_payout_date: Optional[datetime]
     member_count: int = 0
+    mtn_member_count: int = 0
+    has_mtn_member: bool = False
     is_active: bool
 
     class Config:

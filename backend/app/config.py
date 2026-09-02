@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     render: bool = False
     port: int = 8000
 
+    # Stokvel MTN enforcement
+    # Comma-separated list of phone-number prefixes that identify MTN subscribers.
+    # Numbers are normalized to digits and matched against these prefixes after the
+    # country code (default country code: 27 = South Africa).
+    mtn_default_country_code: str = "27"
+    mtn_prefixes: str = "083,081,082,084,078,079"
+
     class Config:
         env_file = ".env"
         extra = "ignore"

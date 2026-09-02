@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, Plus, ArrowRight, PiggyBank, X } from 'lucide-react'
+import { Users, Plus, ArrowRight, PiggyBank, X, Phone, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAccessibility } from '../context/AccessibilityContext'
 import api from '../services/api'
@@ -11,6 +11,8 @@ export default function Stokvel() {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: '', contribution_amount: '', frequency: 'monthly' })
   const [loading, setLoading] = useState(true)
+  const [createError, setCreateError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadStokvels()
@@ -30,6 +32,8 @@ export default function Stokvel() {
 
   const createStokvel = async (e) => {
     e.preventDefault()
+    setCreateError('')
+    setSubmitting(true)
     try {
       await api.post('/api/stokvels/', {
         ...form,
@@ -40,7 +44,11 @@ export default function Stokvel() {
       loadStokvels()
       announce('Stokvel created successfully')
     } catch (err) {
+      const detail = err.response?.data?.detail || t('common.error')
+      setCreateError(detail)
       announce(t('a11y.error_occurred'), 'assertive')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -55,6 +63,7 @@ export default function Stokvel() {
   }
 
   const totalMembers = stokvels.reduce((acc, s) => acc + (s.member_count || 0), 0)
+  const totalMtnMembers = stokvels.reduce((acc, s) => acc + (s.mtn_member_count || 0), 0)
   const totalContrib = stokvels.reduce((acc, s) => acc + (s.contribution_amount || 0) * (s.member_count || 0), 0)
 
   return (
@@ -73,14 +82,18 @@ export default function Stokvel() {
           </div>
         </div>
 
-        <div className="relative grid grid-cols-2 gap-2.5 mt-5">
+<div className="relative grid grid-cols-3 gap-2 mt-5">
           <div className="rounded-2xl bg-white/20 backdrop-blur p-3">
-            <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Active groups</p>
+            <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Groups</p>
             <p className="font-display font-bold text-xl mt-0.5">{stokvels.length}</p>
           </div>
           <div className="rounded-2xl bg-white/20 backdrop-blur p-3">
             <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Members</p>
             <p className="font-display font-bold text-xl mt-0.5">{totalMembers}</p>
+          </div>
+          <div className="rounded-2xl bg-white/20 backdrop-blur p-3">
+            <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">MTN</p>
+            <p className="font-display font-bold text-xl mt-0.5">{totalMtnMembers}</p>
           </div>
         </div>
       </section>
@@ -95,6 +108,19 @@ export default function Stokvel() {
           <Plus className="w-4 h-4" aria-hidden="true" />
           {t('stokvel.new')}
         </button>
+      </div>
+
+      {/* MTN requirement notice */}
+      <div className="flex items-start gap-3 rounded-2xl border border-mtn-yellow/30 bg-gradient-to-br from-mtn-yellow/10 to-amber-50 p-3.5">
+        <div className="w-9 h-9 rounded-xl bg-mtn-yellow/30 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+          <ShieldCheck className="w-4 h-4 text-mtn-blue-deep" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-mtn-blue-deep">MTN member required</p>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Every MoMo Stokvel must have at least one member with an MTN number. All members share the same authority.
+          </p>
+        </div>
       </div>
 
       {/* Create Modal */}
@@ -116,6 +142,20 @@ export default function Stokvel() {
               <h3 className="font-display text-xl font-bold text-mtn-dark">{t('stokvel.create')}</h3>
               <p className="text-sm text-slate-500">Set up a new savings group.</p>
             </div>
+
+            <div className="mb-4 flex items-start gap-2 rounded-2xl border border-mtn-yellow/30 bg-mtn-yellow/10 p-3">
+              <Phone className="w-4 h-4 text-mtn-blue-deep mt-0.5 flex-shrink-0" aria-hidden="true" />
+              <p className="text-xs text-slate-700 leading-relaxed">
+                Your registered phone number must be an <span className="font-semibold">MTN</span> number to create a MoMo Stokvel. All members will share equal authority.
+              </p>
+            </div>
+
+            {createError && (
+              <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100" role="alert" aria-live="assertive">
+                <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" aria-hidden="true" />
+                <p className="text-sm text-red-700">{createError}</p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
@@ -164,8 +204,12 @@ export default function Stokvel() {
             </div>
 
             <div className="flex gap-2 mt-5">
-              <button type="submit" className="flex-1 bg-gradient-to-r from-mtn-yellow to-mtn-yellow-deep text-mtn-blue-deep font-bold py-3 rounded-2xl shadow-glow-yellow hover:shadow-lift focus-visible:ring-4 focus-visible:ring-mtn-blue/30 focus:outline-none transition">
-                {t('stokvel.create')}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-gradient-to-r from-mtn-yellow to-mtn-yellow-deep text-mtn-blue-deep font-bold py-3 rounded-2xl shadow-glow-yellow hover:shadow-lift disabled:opacity-60 disabled:cursor-not-allowed focus-visible:ring-4 focus-visible:ring-mtn-blue/30 focus:outline-none transition"
+              >
+                {submitting ? t('auth.please_wait') : t('stokvel.create')}
               </button>
               <button type="button" onClick={() => setShowCreate(false)} className="flex-1 bg-slate-100 text-slate-700 font-semibold py-3 rounded-2xl hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-mtn-yellow focus:outline-none transition">
                 {t('common.cancel')}
@@ -227,10 +271,28 @@ export default function Stokvel() {
                   </div>
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span className="font-medium">{s.member_count}</span>
-                      <span>{t('stokvel.members')}</span>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span className="font-medium">{s.member_count}</span>
+                        <span>{t('stokvel.members')}</span>
+                      </span>
+                      {s.has_mtn_member ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-mtn-yellow/20 text-mtn-blue-deep border border-mtn-yellow/40"
+                          aria-label={`${s.mtn_member_count || 0} MTN members`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                          {s.mtn_member_count || 0} MTN
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200"
+                          aria-label="No MTN member"
+                        >
+                          MTN needed
+                        </span>
+                      )}
                     </div>
                     <button
                       onClick={() => contribute(s.id)}
