@@ -22,6 +22,12 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
 
+    # Optional Google identity link (set when a user signs in with Google)
+    email = Column(String, unique=True, index=True, nullable=True)
+    google_sub = Column(String, unique=True, index=True, nullable=True)
+    avatar_url = Column(String, nullable=True)
+    auth_provider = Column(String, default="pin")  # pin | google | both
+
     transactions = relationship("Transaction", back_populates="user")
     stokvel_memberships = relationship("StokvelMember", back_populates="user")
 
