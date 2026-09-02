@@ -108,3 +108,75 @@ class ScamAlertResponse(BaseModel):
     risk_level: str
     reason: str
     recommendation: str
+
+
+class WalletResponse(BaseModel):
+    id: str
+    balance: float
+    currency: str
+    provider: str
+    is_active: bool
+    google_wallet_object_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WalletTransactionResponse(BaseModel):
+    id: str
+    type: str
+    amount: float
+    currency: str
+    status: str
+    counterparty_phone: Optional[str] = None
+    counterparty_name: Optional[str] = None
+    reference: Optional[str] = None
+    note: Optional[str] = None
+    source: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WalletDepositRequest(BaseModel):
+    amount: float
+    phone: Optional[str] = None
+    note: Optional[str] = "MoMo SmartMoney wallet top-up"
+
+
+class WalletWithdrawRequest(BaseModel):
+    amount: float
+    phone: Optional[str] = None
+    note: Optional[str] = "MoMo SmartMoney wallet withdrawal"
+
+
+class ScanRequest(BaseModel):
+    """Payload of a decoded QR code, or a manual scan result."""
+
+    raw: str
+
+
+class ScanResponse(BaseModel):
+    """Normalized representation of a scanned MoMo / wallet QR code."""
+
+    kind: str  # "momo_pay", "momo_request", "stokvel_invite", "unknown"
+    amount: Optional[float] = None
+    phone: Optional[str] = None
+    payee_name: Optional[str] = None
+    reference: Optional[str] = None
+    note: Optional[str] = None
+    raw: str
+
+
+class GoogleWalletSaveResponse(BaseModel):
+    save_url: str
+    class_id: str
+    object_id: str
+    expires_at: datetime
+
+
+class GoogleWalletEnrolRequest(BaseModel):
+    display_name: Optional[str] = "SmartMoney MoMo Card"
