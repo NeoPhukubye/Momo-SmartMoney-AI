@@ -22,5 +22,7 @@ ENV PORT=10000
 
 EXPOSE $PORT
 
-# Start application using production uvicorn workers
-CMD ["sh", "-c", "gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30"]
+# Start application using production uvicorn workers.
+# Single worker: the Render free instance has 512MB, and two workers each
+# loading SQLAlchemy + google-generativeai can OOM-restart in a loop.
+CMD ["sh", "-c", "gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30"]
