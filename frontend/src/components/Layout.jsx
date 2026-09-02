@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, MessageCircle, Users, List, LogOut, Shield, Accessibility } from 'lucide-react';
+import { Home, MessageCircle, Users, List, Wallet, LogOut, Shield, Accessibility } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -15,6 +15,7 @@ export default function Layout({ user, onLogout, children }) {
     { to: '/', icon: Home, label: t('common.dashboard') },
     { to: '/chat', icon: MessageCircle, label: t('common.chat') },
     { to: '/stokvel', icon: Users, label: t('common.stokvel') },
+    { to: '/wallet', icon: Wallet, label: t('common.wallet') || 'Wallet' },
     { to: '/transactions', icon: List, label: t('common.transactions') },
   ];
 
