@@ -14,3 +14,4 @@ pgdata/
 .env
 .env.local
 *.env
+.kilo/
