@@ -1,154 +1,69 @@
 # MoMo SmartMoney AI
 
-> **AI-Powered Financial Coach for MTN MoMo Users in South Africa**
+> **AI-Powered Financial Coach & Cardless Tap-to-Pay for MTN MoMo Users in South Africa**  
+> *Scam Shield | Stokvel Intelligence | Cardless Tap-to-Pay (Apple Pay & Google Wallet) | Multi-Channel Access | Powered by Google Gemini AI*  
 > 
-> Scam Shield | Stokvel Intelligence | Multi-Channel Access | Powered by Google Gemini AI
-> 
-> **MTN Group Fintech Hackathon 2026** | Created by Neo Phukubye
 
-## The Problem
+---
 
-75% of South African mobile money users have encountered scam attempts. Informal savings groups (stokvels) manage R50+ billion annually with zero digital tooling. Feature phone users are locked out of modern fintech.
+## 📌 The Problem
+* **Fraud Epidemic:** 75% of South African mobile money users have encountered scam attempts.
+* **Informal Finance Blindspots:** Informal savings groups (stokvels) manage R50+ billion annually with zero digital tooling, relying on fragmented chats and memory[cite: 1].
+* **POS & Card Barriers:** Physical retail checkout overwhelmingly favors contactless cards and phone wallets (Apple Pay/Google Pay), leaving standard mobile money users stuck with slow QR codes or cash withdrawals.
+* **Digital Exclusion:** Millions of feature phone users remain completely locked out of modern fintech apps and automated budgeting tools[cite: 1].
 
-## The Solution
+---
 
-SmartMoney AI is a financial coach that meets users where they are — on smartphones via a responsive web app, on feature phones via USSD (`*141*8#`), or through voice/IVR. It uses Google Gemini AI to provide personalized, culturally-aware financial guidance in South African English.
+## 💡 The Solution
+SmartMoney AI transforms MTN MoMo from a basic transaction wallet into a proactive, intelligent financial companion:
+* **Cardless Tap & Pay:** Generates virtual tokenized MoMo cards backed directly by wallet balances, ready for push-provisioning into Apple Pay, Google Wallet, and Samsung Wallet for instant NFC POS checkout.
+* **Real-Time Scam Shield:** Evaluates outgoing transfers and POS authorizations against a 5-rule fraud scoring engine before money leaves the wallet[cite: 1].
+* **Stokvel Intelligence:** Manages rotational community group savings, contribution tracking, and automated reminders[cite: 1].
+* **Multi-Channel Delivery:** Fully functional across Web PWA (smartphones), USSD (`*141*8#` on feature phones), and Voice/IVR powered by Google Gemini AI[cite: 1].
 
-## Key Features
+---
 
-| Feature | Description |
-|---------|-------------|
-| **AI Financial Coach** | Personalized budgeting advice powered by Gemini 2.0 Flash with conversation memory |
-| **Scam Shield** | Real-time 5-rule fraud scoring (velocity, reported numbers, scam keywords, unusual amounts, new recipients) |
-| **Stokvel Intelligence** | Group savings management with contribution tracking and payout rotation |
-| **Multi-Channel** | Web app + USSD + Voice/IVR — reaching 100% of MoMo users |
-| **Smart Categorization** | Auto-categorize transactions for spending insights |
+## 🚀 Key Features
 
-## Tech Stack
+* **Cardless Tap & Pay (Apple Pay / Google Wallet):** Instant virtual card tokenization for contactless in-store POS tapping and secure web checkout directly against MoMo balances.
+* **Scam Shield AI:** Real-time 5-rule fraud scoring (velocity, reported scam numbers, suspicious keywords, unusual transfer amounts, and first-time recipients)[cite: 1].
+* **Stokvel Intelligence:** Group savings ledger with member contribution tracking, shortfall forecasting, and automated payout rotation scheduling[cite: 1].
+* **AI Financial Coach:** Personalized budgeting advice, spending categorization, and natural language Q&A powered by Google Gemini 2.0 Flash with conversation memory[cite: 1].
+* **Multi-Channel Access:** Consistent financial engine accessible via responsive Web PWA, USSD menu (`*141*8#`), or voice prompts[cite: 1].
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| Frontend | React 18 + Vite 5 + TailwindCSS | Fast, mobile-first PWA |
-| Backend | FastAPI (Python 3.11) | Async, high-performance |
-| AI Engine | **Google Gemini 2.0 Flash** | Fast inference, conversational, cost-effective |
-| Database | PostgreSQL 15 (via Render) | Reliable, auto-managed |
-| Payments | MTN MoMo API | Collection + Disbursement |
-| USSD | Africa's Talking | Feature phone access |
-| Hosting | **Render.com** | One-click deploy, auto-scaling, free tier |
+---
 
-## Deploy to Render (One-Click)
+## 🛠️ Tech Stack
 
-### Prerequisites
-1. A [Render.com](https://render.com) account (free)
-2. A [Google AI Studio](https://aistudio.google.com/apikey) API key (free)
-3. This repo pushed to GitHub
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Frontend** | React 18, Vite 5, TailwindCSS | Fast, mobile-first responsive PWA with Web NFC/Wallet hooks |
+| **Backend** | FastAPI (Python 3.11) | Async, high-concurrency API and orchestrator |
+| **AI Engine** | Google Gemini 2.0 Flash | Conversational coaching, spending pattern insights, and memory |
+| **Database** | PostgreSQL 15 (Render) | ACID-compliant persistence for wallets, cards, and stokvel ledgers |
+| **Virtual Card & NFC** | MoMo Virtual Card API / Tokenization | Cardless token generation for Apple Pay & Google Wallet |
+| **Payments** | MTN MoMo API | Sandbox collections and disbursement rails |
+| **USSD Gateway** | Africa's Talking | USSD session handling (`*141*8#`) for feature phone users |
+| **Hosting** | Render.com | Automated builds, free PostgreSQL, zero-downtime deployment |
 
-### Steps
+---
 
-1. **Connect your repo to Render:**
-   - Go to [Render Dashboard](https://dashboard.render.com)
-   - Click **New** > **Blueprint**
-   - Connect your GitHub repo
-   - Render reads `render.yaml` and auto-creates all services
+## 📐 Architecture
 
-2. **Set secret environment variables** (in Render dashboard):
-   - `GEMINI_API_KEY` — your Google AI Studio key
-   - `MOMO_COLLECTION_PRIMARY_KEY` — MTN MoMo sandbox key
-   - `MOMO_API_USER` — MTN MoMo API user UUID
-   - `MOMO_API_KEY` — MTN MoMo API key
-   - `AT_API_KEY` — Africa's Talking key (for USSD)
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                                CLIENTS                                 │
+│   Smartphone (PWA)   │  Digital Wallets (Apple/Google)  │   USSD / IVR │
+└─────────────┬──────────────────────────┬───────────────────────┬───────┘
+              │                          │                       │
+┌─────────────▼──────────────────────────▼───────────────────────▼───────┐
+│                     FastAPI Backend (Render.com)                       │
+├──────────────────┬──────────────────┬──────────────────┬───────────────┤
+│    AI Coach      │   Scam Shield    │  Stokvel Engine  │ Virtual Card  │
+│ (Gemini 2.0 Flash│    (5 rules)     │ (Group savings)  │  Tap-to-Pay   │
+│    + Memory)     │  + Risk warning  │ + Payout tracker │ Tokenization  │
+├──────────────────┴──────────────────┴──────────────────┴───────────────┤
+│   PostgreSQL (Render)   │   MTN MoMo API   │  Apple / Google Wallet    │
+└─────────────────────────┴──────────────────┴───────────────────────────┘
 
-3. **Deploy** — Render auto-builds and deploys:
-   - `smartmoney-api.onrender.com` — Backend API
-   - `smartmoney-app.onrender.com` — Frontend PWA
-   - `smartmoney-db` — PostgreSQL database
-
-### What Render Provides
-- Auto-deploy on every `git push`
-- Free PostgreSQL database
-- Free SSL/TLS certificates
-- Health check monitoring
-- Zero-downtime deploys
-
-## Local Development
-
-```bash
-# 1. Clone and setup
-git clone https://github.com/your-username/Momo-SmartMoney-AI.git
-cd Momo-SmartMoney-AI
-cp .env.example .env
-# Edit .env — at minimum set GEMINI_API_KEY
-
-# 2. Backend
-cd backend
-pip install -r requirements.txt
-python seed.py          # Load demo data
-uvicorn app.main:app --reload
-
-# 3. Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-**Demo login:** phone `0712345678`, PIN `1234`
-
-## API Reference
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register with phone + PIN |
-| POST | `/api/auth/login` | Login, get JWT |
-| GET | `/api/transactions/` | List user transactions |
-| GET | `/api/transactions/summary` | 30-day spending breakdown |
-| GET | `/api/transactions/flagged` | Scam-flagged transactions |
-| POST | `/api/coaching/chat` | Chat with AI coach (Gemini) |
-| GET | `/api/coaching/tips` | Daily financial tips |
-| POST | `/api/stokvels/` | Create a stokvel group |
-| GET | `/api/stokvels/` | List user's stokvels |
-| POST | `/api/ussd/callback` | Africa's Talking USSD webhook |
-| GET | `/health` | Service health + DB status |
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLIENTS                                    │
-│  Smartphone (PWA)  │  Feature Phone (USSD)  │  IVR (Voice) │
-└────────────┬───────────────┬──────────────────┬─────────────┘
-             │               │                  │
-┌────────────▼───────────────▼──────────────────▼─────────────┐
-│                     FastAPI Backend                           │
-│                    (Render.com)                               │
-├──────────────┬─────────────────┬────────────────────────────┤
-│  AI Coach    │   Scam Shield   │   Stokvel Engine           │
-│  (Gemini AI) │   (5 rules)     │   (Group savings)          │
-│  + Memory    │   + Community    │   + Rotation tracking      │
-│              │     reports      │                            │
-├──────────────┴─────────────────┴────────────────────────────┤
-│  PostgreSQL (Render)  │  MTN MoMo API  │  Africa's Talking  │
-└───────────────────────┴────────────────┴────────────────────┘
-```
-
-## Google Gemini AI Integration
-
-SmartMoney uses **Gemini 2.0 Flash** for:
-- Personalized financial coaching with user transaction context
-- Multi-turn conversation memory (remembers past interactions)
-- Culturally-aware responses using South African English
-- Smart suggestion generation based on spending patterns
-- Graceful fallback to rule-based responses when API is unavailable
-
-**Cost:** Gemini 2.0 Flash free tier provides 15 RPM / 1M TPM — sufficient for demo and early users.
-
-## Hackathon Differentiators
-
-1. **Inclusive by design** — USSD access means 100% of MoMo users can benefit, not just smartphone owners
-2. **AI with context** — Gemini sees your actual spending data, not generic advice
-3. **Scam protection** — Proactive fraud detection on every outgoing transaction
-4. **Community savings** — Digital stokvels bring R50B+ in informal savings into the digital era
-5. **Zero infrastructure cost** — Runs entirely on Render.com free tier + Gemini free tier
-
-## License
-
-Built for MTN Group Fintech Hackathon 2026 by Neo Phukubye.
+**MTN Group Fintech Hackathon 2026** | Created by **Neo Phukubye**
