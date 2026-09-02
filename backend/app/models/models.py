@@ -123,3 +123,54 @@ class ChatMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     user = relationship("User")
+
+
+class Wallet(Base):
+    __tablename__ = "wallets"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    balance = Column(Float, default=0.0)
+    currency = Column(String, default="ZAR")
+    provider = Column(String, default="momo")  # momo, google, mixed
+    google_wallet_object_id = Column(String)  # set after Google Wallet save
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+    transactions = relationship("WalletTransaction", back_populates="wallet", cascade="all, delete-orphan")
+
+
+class WalletTransactionType(str, enum.Enum):
+    DEPOSIT = "deposit"
+    WITHDRAWAL = "withdrawal"
+    TRANSFER_IN = "transfer_in"
+    TRANSFER_OUT = "transfer_out"
+    STOKVEL_CONTRIBUTION = "stokvel_contribution"
+    FEE = "fee"
+
+
+class WalletTransactionStatus(str, enum.Enum):
+    PENDING = "pending"
+    SUCCESSFUL = "successful"
+    FAILED = "failed"
+
+
+class WalletTransaction(Base):
+    __tablename__ = "wallet_transactions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    wallet_id = Column(String, ForeignKey("wallets.id"), nullable=False, index=True)
+    type = Column(SQLEnum(WalletTransactionType), nullable=False)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="ZAR")
+    status = Column(SQLEnum(WalletTransactionStatus), default=WalletTransactionStatus.PENDING)
+    counterparty_phone = Column(String)
+    counterparty_name = Column(String)
+    reference = Column(String)  # MoMo reference id, stokvel id, scan token, etc.
+    note = Column(String)
+    source = Column(String, default="momo")  # momo, scan, google, manual
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    wallet = relationship("Wallet", back_populates="transactions")
