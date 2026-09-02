@@ -1,23 +1,34 @@
+# Render Blueprint for the SmartMoney AI backend.
+#
+# IMPORTANT: the live service (srv-dac7p63q87js73as87fg) was created MANUALLY in the
+# Render dashboard, which means Render does NOT read this file for it. Environment
+# variables and the start command must be set in the dashboard by hand.
+#
+# This file is kept accurate so the stack can be recreated from scratch as a Blueprint,
+# and so it documents the intended configuration. It now matches the live service:
+# Docker runtime, Frankfurt region.
+#
+# The frontend is hosted on GitHub Pages (neophukubye.github.io/Momo-SmartMoney-AI),
+# so Render does not deploy it (saves free build minutes).
+
 databases:
   - name: smartmoney-db
     plan: free
     databaseName: smartmoney
     user: smartmoney
+    region: frankfurt
     postgresMajorVersion: "15"
 
 services:
-  # Backend API only.
-  # The frontend is hosted on GitHub Pages (neophukubye.github.io/Momo-SmartMoney-AI),
-  # so Render does not deploy the frontend (saves free build minutes).
   - type: web
     name: momo-smartmoney-ai
-    runtime: python
-    pythonVersion: "3.11.9"
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: free
-    region: oregon
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30 --keep-alive 65
+    region: frankfurt
     autoDeploy: true
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -27,8 +38,6 @@ services:
         generateValue: true
       - key: APP_ENV
         value: production
-      - key: PYTHON_VERSION
-        value: "3.11.9"
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -51,6 +60,6 @@ services:
         sync: false
       - key: AT_USERNAME
         value: sandbox
+      # Origins only - no paths, no trailing slashes.
       - key: CORS_ORIGINS
-        value: https://neophukubye.github.io,https://neophukubye.github.io/Momo-SmartMoney-AI,http://localhost:5173
-    healthCheckPath: /health
+        value: https://neophukubye.github.io,http://localhost:5173
