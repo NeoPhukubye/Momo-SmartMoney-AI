@@ -44,8 +44,6 @@ services:
         value: https://smartmoney-app.onrender.com,http://localhost:5173
       - key: APP_ENV
         value: production
-      - key: PYTHON_VERSION
-        value: "3.11.9"
     healthCheckPath: /health
 
   # Frontend (Static Site)
