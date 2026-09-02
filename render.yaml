@@ -9,12 +9,11 @@ services:
   # Backend API
   - type: web
     name: smartmoney-api
-    runtime: python
-    pythonVersion: "3.11"
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
     plan: free
     region: oregon
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30 --keep-alive 65
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
