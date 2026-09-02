@@ -23,10 +23,19 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} ({settings.app_env})")
-    await init_db()
-    logger.info("Database initialized")
+    # Never let a database problem take the whole service down: if init_db()
+    # raises here, the workers die on boot and Render answers every request
+    # (including /health) with 502. Log it and start degraded instead.
+    try:
+        await init_db()
+        logger.info("Database initialized")
+    except Exception:
+        logger.exception("Database initialization failed - starting in degraded mode")
     yield
-    await engine.dispose()
+    try:
+        await engine.dispose()
+    except Exception:
+        logger.exception("Error disposing database engine")
     logger.info("Shutdown complete")
 
 
