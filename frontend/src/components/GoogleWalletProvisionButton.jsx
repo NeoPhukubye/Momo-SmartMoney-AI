@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import API_BASE_URL from "../api/config";
 
 export default function GoogleWalletProvisionButton({ cardId }) {
   const [provisioning, setProvisioning] = useState(false);
@@ -7,7 +8,7 @@ export default function GoogleWalletProvisionButton({ cardId }) {
   const handleAddToGoogleWallet = async () => {
     setProvisioning(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/wallet/provision`, {
+      const response = await fetch(`${API_BASE_URL}/api/cards/wallet/provision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
