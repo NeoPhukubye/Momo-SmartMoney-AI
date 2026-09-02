@@ -11,3 +11,6 @@ venv/
 .venv/
 pgdata/
 .aider*
+.env
+.env.local
+*.env
