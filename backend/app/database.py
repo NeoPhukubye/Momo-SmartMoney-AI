@@ -8,10 +8,20 @@ settings = get_settings()
 db_url = settings.database_url
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-elif db_url.startswith("postgresql://"):
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-engine = create_async_engine(db_url, echo=settings.app_env == "development")
+# Render internal Postgres hosts do not require SSL; external public URLs do.
+connect_args = {}
+if db_url.startswith("postgresql+asyncpg://") and "render.com" in db_url and "dpg-" not in db_url:
+    connect_args = {"ssl": "require"}
+
+engine = create_async_engine(
+    db_url,
+    echo=settings.app_env == "development",
+    connect_args=connect_args,
+    pool_pre_ping=True,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
