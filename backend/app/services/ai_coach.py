@@ -1,83 +1,86 @@
+import os
+import json
+import logging
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from datetime import datetime, timedelta
-import google.generativeai as genai
-import logging
-import json
+from sqlalchemy.orm import selectinload
 
-from app.models.models import User, Transaction, ChatMessage
+from google import genai
+from google.genai import types
+
+from app.models.models import User, Transaction, ChatMessage, Wallet, StokvelMember
 from app.schemas.schemas import CoachingResponse
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-SYSTEM_PROMPT = """You are SmartMoney AI, a friendly and accessible financial coach for MoMo mobile money users in South Africa.
+SYSTEM_INSTRUCTION = """You are MoMo SmartMoney AI Coach, a deeply analytical personal financial advisor for MTN MoMo users in South Africa.
 
 Your personality:
-- Warm, encouraging, and street-smart about money
-- You speak simply, like a wise friend — never condescending
-- You use Rands (R) for currency
-- You keep responses SHORT (2-3 sentences max) and actionable
-- You celebrate small wins ("R50 saved is R50 earned!")
-- You use common South African English expressions naturally (howzit, eish, sharp, lekker)
+- Warm, encouraging, and street-smart about money.
+- Speak simply, like a wise friend — never condescending.
+- Use Rands (R) for currency.
+- Keep responses SHORT (2-3 sentences max if possible) and highly actionable.
+- Celebrate small wins ("R50 saved is R50 earned!").
+- Use common South African English expressions naturally (howzit, eish, sharp, lekker).
 
 Your expertise:
-- Analyzing spending patterns and giving specific, data-backed advice
-- Personalized budgeting using the 50/30/20 rule adapted for SA informal economy
-- Warning about mobile money scams (fake agents, SIM swaps, "send back" scams, advance fee fraud)
-- Encouraging saving — even R5/day matters
-- Supporting stokvel (group savings) participation and management
-- Understanding township economics and informal traders
+- Analyzing spending patterns and giving specific, data-backed advice.
+- Personalized budgeting using the 50/30/20 rule adapted for SA informal economy.
+- Warning about mobile money scams (fake agents, SIM swaps, "send back" scams, advance fee fraud).
+- Encouraging saving — even R5/day matters.
+- Supporting stokvel (group savings) participation and management.
+- Understanding township economics and informal traders.
 
-Rules:
-- Never reveal you are an AI — you are "SmartMoney", their financial coach
-- If you see overspending, address it gently with practical tips
-- Always end with ONE clear action the user can take TODAY
-- Reference their actual transaction data when giving advice
-- If asked about something outside finance, redirect warmly
-- Never recommend specific financial products or investments
-- Be aware of South African public holidays, pay cycles (25th of month), and grant payment dates"""
+CRITICAL RULES FOR ANALYTICAL REASONING:
+1. NEVER give boilerplate or generic advice like "Save 20%" or "Create a budget" without direct calculations based on the user's live data.
+2. ALWAYS cite the user's exact balance, specific recent transactions, and calculate percentage breakdowns from the provided financial context.
+3. Compare categories with mathematical calculations (e.g., "You spent R420 on Fast Food out of R1,200 total expenses—that is 35% of your outflow").
+4. Point out risks, anomalies, or upcoming Stokvel obligations using the real data provided.
+5. Provide localized, culturally aware advice in South African English or the requested language.
+6. Keep answers concise, actionable, and mathematically grounded.
+7. Never reveal you are an AI — you are "SmartMoney", their financial coach.
+8. If you see overspending, address it gently with practical tips.
+9. Always end with ONE clear action the user can take TODAY.
+10. If asked about something outside finance, redirect warmly.
+11. Never recommend specific financial products or investments.
+"""
+
+_client = None
 
 
-# Gemini model singleton with connection pooling
-_gemini_model = None
-
-
-def _get_gemini_model():
-    global _gemini_model
-    if _gemini_model is None and settings.gemini_api_key:
-        genai.configure(api_key=settings.gemini_api_key)
-        _gemini_model = genai.GenerativeModel(
-            model_name=settings.gemini_model,
-            system_instruction=SYSTEM_PROMPT,
-            generation_config=genai.GenerationConfig(
-                max_output_tokens=300,
-                temperature=0.7,
-                top_p=0.9,
-                top_k=40,
-            ),
-            safety_settings={
-                "HARM_CATEGORY_HARASSMENT": "BLOCK_ONLY_HIGH",
-                "HARM_CATEGORY_HATE_SPEECH": "BLOCK_ONLY_HIGH",
-                "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_ONLY_HIGH",
-                "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_ONLY_HIGH",
-            },
-        )
-    return _gemini_model
+def _get_genai_client():
+    global _client
+    if _client is None and settings.gemini_api_key:
+        try:
+            _client = genai.Client(api_key=settings.gemini_api_key)
+        except Exception as e:
+            logger.error(f"Failed to initialize google-genai Client: {e}")
+    return _client
 
 
 async def get_coaching_response(
     message: str, user: User, db: AsyncSession, context: str | None = None
 ) -> CoachingResponse:
+    # 1. Fetch wallet and balance
+    wallet_result = await db.execute(
+        select(Wallet).where(Wallet.user_id == user.id)
+    )
+    wallet = wallet_result.scalar_one_or_none()
+    balance = wallet.balance if wallet else 0.0
+    currency = wallet.currency if wallet else "ZAR"
+
+    # 2. Fetch last 30 days of transactions for income/expense calculations
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    result = await db.execute(
+    tx_result = await db.execute(
         select(Transaction)
         .where(Transaction.user_id == user.id, Transaction.timestamp >= thirty_days_ago)
         .order_by(Transaction.timestamp.desc())
         .limit(20)
     )
-    recent_transactions = result.scalars().all()
+    recent_transactions = tx_result.scalars().all()
 
     total_in = sum(t.amount for t in recent_transactions if t.direction == "in")
     total_out = sum(t.amount for t in recent_transactions if t.direction == "out")
@@ -89,23 +92,58 @@ async def get_coaching_response(
             cat = t.category.value if t.category else "other"
             categories[cat] = categories.get(cat, 0) + t.amount
 
-    top_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)[:5]
-    cat_str = ", ".join(f"{k}: R{v:.0f}" for k, v in top_categories) if top_categories else "No spending data yet"
+    top_categories_sorted = sorted(categories.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_categories_list = [{"category": k.title(), "amount": float(v)} for k, v in top_categories_sorted]
 
-    # Detect spending trends
+    recent_tx_list = []
+    for t in recent_transactions:
+        recent_tx_list.append({
+            "date": str(t.timestamp.date()) if t.timestamp else "N/A",
+            "merchant": t.counterparty_name or t.description or "Unknown",
+            "amount": -float(t.amount) if t.direction == "out" else float(t.amount),
+            "category": t.category.value if t.category else "other"
+        })
+
+    # 3. Fetch Stokvel obligations
+    stokvel_result = await db.execute(
+        select(StokvelMember)
+        .where(StokvelMember.user_id == user.id)
+        .options(selectinload(StokvelMember.stokvel))
+    )
+    memberships = stokvel_result.scalars().all()
+    stokvel_obligations = []
+    for m in memberships:
+        if m.stokvel and m.stokvel.is_active:
+            stokvel_obligations.append({
+                "name": m.stokvel.name,
+                "due_amount": float(m.stokvel.contribution_amount),
+                "due_date": str(m.stokvel.next_contribution_date.date()) if m.stokvel.next_contribution_date else "N/A"
+            })
+
+    # 4. Assemble financial context
+    financial_context = {
+        "balance": float(balance),
+        "currency": currency,
+        "monthly_income": float(total_in),
+        "monthly_expenses": float(total_out),
+        "top_categories": top_categories_list,
+        "recent_transactions": recent_tx_list,
+        "stokvel_obligations": stokvel_obligations
+    }
+
+    # Detect spending trends for some fallback context or extra information
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     recent_week = [t for t in recent_transactions if t.timestamp >= seven_days_ago]
     week_spending = sum(t.amount for t in recent_week if t.direction == "out")
     daily_avg = week_spending / 7 if recent_week else 0
 
-    user_context = f"""USER FINANCIAL SNAPSHOT:
+    user_context = f"""USER FINANCIAL SNAPSHOT (LIVE DATA):
+{json.dumps(financial_context, indent=2)}
+
 - Name: {user.name}
-- Last 30 days: Income R{total_in:.0f}, Spent R{total_out:.0f}, Net R{total_in - total_out:.0f}
 - Savings rate: {((total_in - total_out) / total_in * 100) if total_in > 0 else 0:.0f}%
-- Top spending: {cat_str}
 - This week's daily average spend: R{daily_avg:.0f}
-- Transactions this month: {len(recent_transactions)}
-- Flagged transactions: {sum(1 for t in recent_transactions if t.is_flagged)}"""
+- Flags: {sum(1 for t in recent_transactions if t.is_flagged)}"""
 
     if context:
         user_context += f"\n- Additional context: {context}"
@@ -113,26 +151,26 @@ async def get_coaching_response(
     # Load conversation history for multi-turn context
     chat_history = await _get_chat_history(user.id, db)
 
-    # Try Gemini
-    model = _get_gemini_model()
-    if model:
+    # Try Gemini Client
+    client = _get_genai_client()
+    if client:
         try:
-            response = await _call_gemini(model, message, user_context, chat_history)
-            if response:
+            response_text = await _call_gemini_client(client, message, user_context, chat_history, language=user.language or "en")
+            if response_text:
                 # Save to chat history
                 await _save_chat_message(user.id, "user", message, db)
-                await _save_chat_message(user.id, "assistant", response, db)
+                await _save_chat_message(user.id, "assistant", response_text, db)
                 await db.commit()
 
                 return CoachingResponse(
-                    response=response,
+                    response=response_text,
                     suggestions=_generate_suggestions(message, total_in, total_out),
                     category=_detect_category(message),
                 )
         except Exception as e:
-            logger.warning(f"Gemini API error: {e}")
+            logger.warning(f"Gemini SDK Client error: {e}")
 
-    # Fallback
+    # Fallback response
     return _fallback_response(message, total_in, total_out, user.name)
 
 
@@ -153,10 +191,9 @@ async def _save_chat_message(user_id: str, role: str, content: str, db: AsyncSes
     db.add(msg)
 
 
-async def _call_gemini(model, message: str, user_context: str, history: list[dict]) -> str | None:
+async def _call_gemini_client(client, message: str, user_context: str, history: list[dict], language: str = "en") -> str | None:
     import asyncio
 
-    # Build conversation with history for context
     history_text = ""
     if history:
         history_text = "\n\nRECENT CONVERSATION:\n"
@@ -164,10 +201,30 @@ async def _call_gemini(model, message: str, user_context: str, history: list[dic
             prefix = "User" if h["role"] == "user" else "You"
             history_text += f"{prefix}: {h['content']}\n"
 
-    prompt = f"{user_context}{history_text}\n\nUser says now: {message}"
+    prompt = f"""{user_context}{history_text}
+
+TARGET RESPONSE LANGUAGE: {language}
+
+USER QUESTION:
+"{message}"
+
+Analyze the numbers above. Identify real patterns, compute relevant percentages, and answer the user's question directly using their actual transaction and balance data.
+"""
 
     loop = asyncio.get_event_loop()
-    response = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
+    # Call client.models.generate_content in an executor because the google-genai library is synchronous
+    response = await loop.run_in_executor(
+        None,
+        lambda: client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.3,
+                max_output_tokens=300,
+            )
+        )
+    )
 
     if response and response.text:
         return response.text.strip()
