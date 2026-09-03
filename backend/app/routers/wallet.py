@@ -49,6 +49,12 @@ from app.services.momo import (
     get_payment_status,
     initiate_request_to_pay,
 )
+from app.config import get_settings
+
+import logging
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(prefix="/api/wallet", tags=["Wallet"])
 
@@ -338,22 +344,58 @@ async def enrol_google_wallet(
 ):
     """Create a Google Wallet "save" URL for the user's SmartMoney MoMo card.
 
-    In production this would mint a signed JWT against the Google Wallet API
-    (issuer + class + object). Until real Google Wallet credentials are wired
-    in, we generate a deterministic but unique object id and return a
-    well-formed save URL that the frontend can deep-link to.
+    The URL is `https://pay.google.com/gp/v/save/<JWT>` - the JWT is a path
+    segment holding a pass signed with our service-account key, not a query
+    parameter and not ids glued together. See app/services/google_wallet.py.
     """
+    from app.services.google_wallet import (
+        GoogleWalletNotConfigured,
+        create_save_url,
+    )
+
     wallet = await _get_or_create_wallet(user, db)
-    issuer_id = "33880000000223000001"  # placeholder issuer; replace with real id
-    class_id = f"{issuer_id}.smartmoney_momo_class"
-    object_id = f"{issuer_id}.{wallet.id.replace('-', '')[:18]}"
+
+    issuer_id = settings.google_wallet_issuer_id
+    class_suffix = settings.google_wallet_class_suffix
+    # Object ids must be unique per user and may only contain
+    # alphanumerics, '.', '_' and '-'.
+    object_suffix = wallet.id.replace("-", "")[:18]
+    class_id = f"{issuer_id}.{class_suffix}"
+    object_id = f"{issuer_id}.{object_suffix}"
+
+    try:
+        save_url = create_save_url(
+            issuer_id=issuer_id,
+            service_account_json=settings.google_wallet_service_account_json,
+            origins=[
+                o.strip()
+                for o in settings.google_wallet_origins.split(",")
+                if o.strip()
+            ],
+            class_suffix=class_suffix,
+            object_suffix=object_suffix,
+            holder_name=user.name,
+            phone_number=user.phone_number,
+            balance=wallet.balance,
+            currency=wallet.currency,
+            card_title=payload.display_name or "SmartMoney MoMo Card",
+        )
+    except GoogleWalletNotConfigured as exc:
+        # Deliberately a 503, not a fabricated URL: a link that 404s on
+        # pay.google.com looks like a Google outage and costs hours to trace.
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception:
+        logger.exception("Failed to mint Google Wallet save URL")
+        raise HTTPException(
+            status_code=502,
+            detail="Could not create the Google Wallet pass. Please try again.",
+        )
+
     wallet.google_wallet_object_id = object_id
     await db.commit()
 
-    save_url = (
-        f"https://pay.google.com/gp/v/save/"
-        f"?token={class_id}.{object_id}"
-    )
+    # Google does not expire the JWT itself; this is how long the frontend
+    # should treat the link as fresh before asking for a new one.
     expires_at = datetime.utcnow() + timedelta(minutes=15)
     return GoogleWalletSaveResponse(
         save_url=save_url,
