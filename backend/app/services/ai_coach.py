@@ -408,11 +408,11 @@ def _analytical_fallback(
         )
 
     # Default: show real numbers
+    top_str = f" Top spend: {top_cat['category']} R{top_cat['amount']:.0f}." if top_cat else ""
     return CoachingResponse(
         response=(
             f"Your snapshot: wallet R{balance:.0f}, 30-day income R{total_in:.0f}, "
-            f"expenses R{total_out:.0f}, savings rate {savings_rate:.0f}%. "
-            f"{f'Top spend: {top_cat['category']} R{top_cat['amount']:.0f}.' if top_cat else ''} "
+            f"expenses R{total_out:.0f}, savings rate {savings_rate:.0f}%.{top_str} "
             f"Ask me about spending, savings goals, stokvels, or scams."
         ),
         suggestions=["Where did my money go?", "Can I afford this?", "Is this a scam?"],
