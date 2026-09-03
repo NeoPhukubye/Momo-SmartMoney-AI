@@ -146,6 +146,7 @@ class StokvelJoinByInviteRequest(BaseModel):
 class CoachingQuery(BaseModel):
     message: str
     context: Optional[str] = None
+    language: Optional[str] = None
 
 
 class CoachingResponse(BaseModel):
