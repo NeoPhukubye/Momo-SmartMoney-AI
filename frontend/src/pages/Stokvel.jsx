@@ -154,15 +154,15 @@ export default function Stokvel() {
         </div>
       </div>
 
-      {/* MTN requirement notice */}
+      {/* MTN recommendation notice */}
       <div className="flex items-start gap-3 rounded-2xl border border-mtn-yellow/30 bg-gradient-to-br from-mtn-yellow/10 to-amber-50 p-3.5">
         <div className="w-9 h-9 rounded-xl bg-mtn-yellow/30 flex items-center justify-center flex-shrink-0" aria-hidden="true">
           <ShieldCheck className="w-4 h-4 text-mtn-blue-deep" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-mtn-blue-deep">MTN member required</p>
+          <p className="text-sm font-semibold text-mtn-blue-deep">MTN member recommended</p>
           <p className="text-xs text-slate-600 mt-0.5">
-            Every MoMo Stokvel must have at least one member with an MTN number. All members share the same authority.
+            MoMo payouts work best with at least one MTN member. You can create the group now and link an MTN member before the first payout cycle.
           </p>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function Stokvel() {
             <div className="mb-4 flex items-start gap-2 rounded-2xl border border-mtn-yellow/30 bg-mtn-yellow/10 p-3">
               <Phone className="w-4 h-4 text-mtn-blue-deep mt-0.5 flex-shrink-0" aria-hidden="true" />
               <p className="text-xs text-slate-700 leading-relaxed">
-                Your registered phone number must be an <span className="font-semibold">MTN</span> number to create a MoMo Stokvel. All members will share equal authority.
+                Adding an MTN MoMo member before the first payout makes mobile-money payouts automatic. You can always invite one later. All members have equal authority.
               </p>
             </div>
 
