@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     at_api_key: str = ""
 
     # CORS
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = (
+        "http://localhost:5173,http://localhost:3000,"
+        "https://neophukubye.github.io,https://momo-smartmoney-ai.onrender.com"
+    )
 
     # JWT
     access_token_expire_minutes: int = 60 * 24
