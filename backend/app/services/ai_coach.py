@@ -293,9 +293,10 @@ def _analytical_fallback(
 
     # No live data — be honest instead of pretending
     if total_in == 0 and total_out == 0 and balance == 0:
+        greeting = _greeting_for_language(language)
         return CoachingResponse(
             response=(
-                f"Sawubona {name}! Your wallet is empty — no transactions yet. "
+                f"{greeting} {name}! Your wallet is empty — no transactions yet. "
                 f"Connect your MoMo or make your first deposit so I can coach you with real numbers."
             ),
             suggestions=["How do I connect MoMo?", "What can you coach me on?", "Help me save"],
@@ -436,6 +437,38 @@ def _analytical_fallback(
         ),
         suggestions=["Where did my money go?", "Can I afford this?", "Is this a scam?"],
     )
+
+
+# Per-language greetings for the offline fallback (when Gemini is unavailable).
+# Gemini handles the actual reply; this is only used if the SDK is missing or
+# errors so we never show a fully English fallback to a Zulu/Sepedi user.
+_GREETINGS = {
+    "zu": "Sawubona",
+    "xh": "Molo",
+    "st": "Dumela",
+    "nso": "Thobela",
+    "tn": "Dumelang",
+    "ts": "Avuxeni",
+    "ve": "Ndaa",
+    "ss": "Sawubona",
+    "nr": "Lotjhani",
+    "af": "Hallo",
+    "en": "Howzit",
+    "sw": "Habari",
+    "ha": "Sannu",
+    "yo": "Bawo",
+    "ig": "Ndewo",
+    "fr": "Bonjour",
+    "pt": "Olá",
+    "am": "Selam",
+    "rw": "Muraho",
+}
+
+
+def _greeting_for_language(language: str | None) -> str:
+    if not language:
+        return "Howzit"
+    return _GREETINGS.get(language.lower(), "Howzit")
 
 
 def _fallback_response(message: str, income: float, expenses: float, name: str) -> CoachingResponse:
