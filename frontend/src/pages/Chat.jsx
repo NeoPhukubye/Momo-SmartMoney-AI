@@ -5,7 +5,7 @@ import { useAccessibility } from '../context/AccessibilityContext'
 import api from '../services/api'
 
 export default function Chat() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { announce, settings } = useAccessibility()
   const [messages, setMessages] = useState([
     {
@@ -35,7 +35,10 @@ export default function Chat() {
     announce(t('chat.analyzing'))
 
     try {
-      const { data } = await api.post('/api/coaching/chat', { message: userMsg })
+      const { data } = await api.post('/api/coaching/chat', {
+        message: userMsg,
+        language: i18n.language || 'en',
+      })
       setMessages((prev) => [
         ...prev,
         {
