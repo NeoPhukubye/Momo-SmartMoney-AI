@@ -21,7 +21,13 @@ async def coaching_chat(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    response = await get_coaching_response(query.message, user, db, context=query.context)
+    response = await get_coaching_response(
+        query.message,
+        user,
+        db,
+        context=query.context,
+        language=query.language or user.language,
+    )
     return response
 
 
