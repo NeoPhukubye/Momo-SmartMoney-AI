@@ -153,7 +153,7 @@ async def get_coaching_response(
 
     # Try Gemini Client
     client = _get_genai_client()
-    if client:
+    if client and settings.gemini_api_key:
         try:
             response_text = await _call_gemini_client(client, message, user_context, chat_history, language=user.language or "en")
             if response_text:
@@ -170,8 +170,8 @@ async def get_coaching_response(
         except Exception as e:
             logger.warning(f"Gemini SDK Client error: {e}")
 
-    # Fallback response
-    return _fallback_response(message, total_in, total_out, user.name)
+    # Fallback: compute analytical answer from the user's actual numbers
+    return _analytical_fallback(message, balance, total_in, total_out, top_categories_list, recent_tx_list, stokvel_obligations, user.name)
 
 
 async def _get_chat_history(user_id: str, db: AsyncSession) -> list[dict]:
@@ -262,47 +262,172 @@ def _generate_suggestions(message: str, income: float, expenses: float) -> list[
     return ["Check my spending", "Help me save", "Is this a scam?"]
 
 
-def _fallback_response(message: str, income: float, expenses: float, name: str) -> CoachingResponse:
+def _analytical_fallback(
+    message: str,
+    balance: float,
+    total_in: float,
+    total_out: float,
+    top_categories: list[dict],
+    recent_tx: list[dict],
+    stokvel_obligations: list[dict],
+    name: str,
+) -> CoachingResponse:
+    """
+    Offline analytical coach: performs real arithmetic on the user's live
+    numbers (no generic templates). Triggered when the Gemini API key is
+    missing or the SDK errors out.
+    """
     msg_lower = message.lower()
+    net = total_in - total_out
+    savings_rate = (net / total_in * 100) if total_in > 0 else 0.0
+    top_cat = top_categories[0] if top_categories else None
+    top_cat_pct = (top_cat["amount"] / total_out * 100) if (top_cat and total_out > 0) else 0.0
 
+    # Try to extract a target amount + horizon (e.g. "save R200k in a year")
+    amount_target = None
+    horizon_months = None
+    import re
+
+    amount_match = re.search(r"r\s?([\d,]+)\s?k\b", msg_lower)
+    if amount_match:
+        amount_target = float(amount_match.group(1).replace(",", "")) * 1000
+    else:
+        amount_match = re.search(r"r\s?([\d,]+)", msg_lower)
+        if amount_match:
+            amount_target = float(amount_match.group(1).replace(",", ""))
+    if "year" in msg_lower or "annum" in msg_lower:
+        horizon_months = 12
+    elif "month" in msg_lower:
+        m = re.search(r"(\d+)\s*month", msg_lower)
+        horizon_months = int(m.group(1)) if m else 1
+
+    # Greeting
     if any(w in msg_lower for w in ["hello", "hi", "hey", "howzit", "sawubona"]):
+        top_str = f" Your top spend is {top_cat['category']} at R{top_cat['amount']:.0f}." if top_cat else ""
         return CoachingResponse(
-            response=f"Howzit {name}! I'm SmartMoney, your financial coach. I can help with your spending, savings goals, stokvel tracking, or keeping you safe from scams. What's on your mind?",
-            suggestions=["Show my spending", "Help me save", "Stokvel info"],
+            response=(
+                f"Howzit {name}! Your wallet is at R{balance:.0f} with R{total_in:.0f} in "
+                f"and R{total_out:.0f} out this month (savings rate {savings_rate:.0f}%).{top_str} "
+                f"What's on your mind?"
+            ),
+            suggestions=["Where did my money go?", "Can I afford this?", "Stokvel status"],
         )
 
-    if any(w in msg_lower for w in ["spend", "spending", "budget"]):
-        net = income - expenses
-        status = "You're in the green" if net > 0 else "Things are tight"
+    # Savings goal arithmetic (e.g. "save R200k in a year")
+    if amount_target and horizon_months:
+        per_month = amount_target / horizon_months
+        pct_of_income = (per_month / total_in * 100) if total_in > 0 else None
+        feasible = total_in > 0 and per_month < total_in * 0.5
+        verdict = "realistic" if feasible else "aggressive — it requires sacrifice"
+        pct_str = f" That is {pct_of_income:.1f}% of your R{total_in:.0f} income." if pct_of_income is not None else ""
+        suggestion = (
+            f" On R{total_in:.0f}/month, a safer pace is 20–30% (R{(total_in*0.2):.0f}–R{(total_in*0.3):.0f}/month). "
+            f"Top cutting area: {top_cat['category']} at R{top_cat['amount']:.0f} ({top_cat_pct:.0f}% of outflow)."
+        ) if top_cat else ""
         return CoachingResponse(
-            response=f"{status} this month — R{income:.0f} in, R{expenses:.0f} out. Net: R{net:.0f}. Want me to break down where your money's going?",
-            suggestions=["Spending breakdown", "Set a budget", "Cut expenses"],
-            category="spending",
-        )
-
-    if any(w in msg_lower for w in ["save", "savings"]):
-        suggested = income * 0.1
-        return CoachingResponse(
-            response=f"Smart move thinking about savings! With your income of R{income:.0f}, try saving 10% — that's R{suggested:.0f}/month. Even R20/day adds up to R600/month. Start small, stay consistent.",
-            suggestions=["Set savings goal", "Start with R50/week", "Join stokvel"],
+            response=(
+                f"To save R{amount_target:,.0f} in {horizon_months} months you need "
+                f"R{per_month:,.2f} per month.{pct_str} On your current numbers that is {verdict}.{suggestion} "
+                f"One action today: move R{per_month:.0f} to a separate savings pocket right after payday."
+            ),
+            suggestions=["Set this as a goal", "Cut my top category", "Join a stokvel"],
             category="savings",
         )
 
-    if any(w in msg_lower for w in ["scam", "fraud", "suspicious"]):
+    # Affordability check ("can I afford R300 dinner")
+    afford_match = re.search(r"(?:afford|spend|buy)\s+r\s?([\d,]+)", msg_lower)
+    if afford_match:
+        cost = float(afford_match.group(1).replace(",", ""))
+        upcoming_stokvel = sum(o["due_amount"] for o in stokvel_obligations)
+        safe_balance = balance - upcoming_stokvel
+        ok = safe_balance - cost > 0
+        pct_of_balance = (cost / balance * 100) if balance > 0 else None
+        stokvel_str = f" After setting aside R{upcoming_stokvel:.0f} for Stokvel, you have R{safe_balance:.0f}." if upcoming_stokvel > 0 else f" Your wallet has R{balance:.0f}."
+        pct_str = f" That is {pct_of_balance:.1f}% of your balance." if pct_of_balance is not None else ""
         return CoachingResponse(
-            response="Stay sharp! Common scams: 'wrong transfer' (they ask you to send back), fake MTN agents asking for PINs, and prize messages. Rule: if YOU didn't start it, don't send money.",
-            suggestions=["View flagged numbers", "Report a scam", "More safety tips"],
+            response=(
+                f"{'Yes, you can afford it.' if ok else 'Eish, this would leave you tight.'} "
+                f"{stokvel_str}{pct_str} Cost R{cost:.0f}; post-purchase you'd sit at R{(safe_balance-cost):.0f}."
+            ),
+            suggestions=["Show my balance", "Upcoming stokvel dues", "Set a spending limit"],
+            category="spending",
+        )
+
+    # Spending breakdown
+    if any(w in msg_lower for w in ["spend", "spending", "budget", "where"]):
+        if top_cat:
+            return CoachingResponse(
+                response=(
+                    f"Last 30 days: R{total_out:.0f} out, R{total_in:.0f} in, net R{net:.0f}. "
+                    f"Top category is {top_cat['category']} at R{top_cat['amount']:.0f} "
+                    f"({top_cat_pct:.0f}% of total outflow). "
+                    f"Wallet balance: R{balance:.0f}."
+                ),
+                suggestions=["Cut my top category", "Set a category budget", "View transactions"],
+                category="spending",
+            )
+        return CoachingResponse(
+            response=f"Last 30 days: R{total_out:.0f} spent, R{total_in:.0f} received. Wallet: R{balance:.0f}.",
+            suggestions=["View transactions", "Set a budget"],
+            category="spending",
+        )
+
+    # Scam
+    if any(w in msg_lower for w in ["scam", "fraud", "suspicious"]):
+        flagged = sum(1 for t in recent_tx if t.get("amount", 0) < 0 and abs(t["amount"]) > 1000)
+        return CoachingResponse(
+            response=(
+                f"Stay sharp! You have {flagged} recent large outflows to review. "
+                "Common MoMo scams: 'wrong transfer' (refund requests), fake MTN agents asking for PINs, "
+                "SIM-swap calls, and prize messages. Rule: if YOU didn't initiate it, don't send money."
+            ),
+            suggestions=["View flagged transactions", "Report a scam", "Safety tips"],
             category="security",
         )
 
+    # Stokvel
     if any(w in msg_lower for w in ["stokvel", "group", "club"]):
+        if stokvel_obligations:
+            total_due = sum(o["due_amount"] for o in stokvel_obligations)
+            return CoachingResponse(
+                response=(
+                    f"You have {len(stokvel_obligations)} active stokvel(s) with R{total_due:.0f} "
+                    f"in upcoming contributions. Next due: {stokvel_obligations[0]['name']} "
+                    f"R{stokvel_obligations[0]['due_amount']:.0f} on {stokvel_obligations[0]['due_date']}."
+                ),
+                suggestions=["My stokvels", "Create new stokvel", "Track contributions"],
+                category="stokvel",
+            )
         return CoachingResponse(
-            response=f"Stokvels are powerful, {name}! A group of 10 people saving R200/month means someone gets R2,000 every month. I can help you track contributions and predict payouts.",
-            suggestions=["My stokvels", "Create new stokvel", "How stokvels work"],
+            response=(
+                f"Stokvels are powerful, {name}! A group of 10 saving R200/month gives one member "
+                f"R2,000 monthly. I can help you start one and track contributions."
+            ),
+            suggestions=["Create stokvel", "How stokvels work"],
             category="stokvel",
         )
 
+    # Default: show real numbers
     return CoachingResponse(
-        response=f"I'm here to help, {name}! I can coach you on spending, saving, stokvels, or scam protection. Just ask me anything about your money.",
-        suggestions=["My spending summary", "Help me save", "Is this a scam?"],
+        response=(
+            f"Your snapshot: wallet R{balance:.0f}, 30-day income R{total_in:.0f}, "
+            f"expenses R{total_out:.0f}, savings rate {savings_rate:.0f}%. "
+            f"{f'Top spend: {top_cat['category']} R{top_cat['amount']:.0f}.' if top_cat else ''} "
+            f"Ask me about spending, savings goals, stokvels, or scams."
+        ),
+        suggestions=["Where did my money go?", "Can I afford this?", "Is this a scam?"],
+    )
+
+
+def _fallback_response(message: str, income: float, expenses: float, name: str) -> CoachingResponse:
+    """Kept for backwards compatibility — redirects to the analytical fallback."""
+    return _analytical_fallback(
+        message,
+        balance=0.0,
+        total_in=income,
+        total_out=expenses,
+        top_categories=[],
+        recent_tx=[],
+        stokvel_obligations=[],
+        name=name,
     )
