@@ -45,6 +45,18 @@ class Settings(BaseSettings):
     mtn_default_country_code: str = "27"
     mtn_prefixes: str = "083,081,082,084,078,079"
 
+    # Google Wallet ("Add to Google Wallet")
+    # issuer_id: ~20-digit number from the Google Pay & Wallet Console.
+    # service_account_json: the service-account key, either as raw JSON (what
+    #   you paste into a Render env var) or as a path to the .json file.
+    # origins: sites allowed to present the save link.
+    # Leave issuer_id/service_account_json empty and the enrol endpoint returns
+    # a 503 explaining what is missing, rather than a save URL that 404s.
+    google_wallet_issuer_id: str = ""
+    google_wallet_service_account_json: str = ""
+    google_wallet_origins: str = "https://neophukubye.github.io"
+    google_wallet_class_suffix: str = "smartmoney_momo_class"
+
     # Google OAuth (sign-in)
     # Comma-separated list of allowed Web Client IDs. The backend checks the
     # `aud` claim of incoming Google ID tokens against this list.
