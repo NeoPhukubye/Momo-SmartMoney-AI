@@ -21,6 +21,12 @@ env:
   NODE_VERSION: 22
 
 jobs:
+  # Build and deploy are deliberately separate jobs. Artifacts live for the
+  # whole workflow *run*, not per attempt, so when build+deploy share one job a
+  # re-run uploads a second artifact named "github-pages" and deploy-pages
+  # aborts with "Multiple artifacts named github-pages were unexpectedly found".
+  # Split this way, "Re-run failed jobs" replays only `deploy`, which uploads
+  # nothing and reuses the artifact build already produced.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -42,10 +48,24 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: cd frontend && npm run build
 
+      # GitHub Pages serves a single-page app from static files, so a deep link
+      # like /Momo-SmartMoney-AI/wallet would 404 on refresh. Serving index.html
+      # as the 404 page hands routing back to the client router.
+      - name: Add SPA fallback
+        run: cp frontend/dist/index.html frontend/dist/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: frontend/dist
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v5
