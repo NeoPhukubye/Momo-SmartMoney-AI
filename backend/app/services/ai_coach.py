@@ -294,11 +294,9 @@ def _analytical_fallback(
     # No live data — be honest instead of pretending
     if total_in == 0 and total_out == 0 and balance == 0:
         greeting = _greeting_for_language(language)
+        body = _empty_wallet_body_for_language(language)
         return CoachingResponse(
-            response=(
-                f"{greeting} {name}! Your wallet is empty — no transactions yet. "
-                f"Connect your MoMo or make your first deposit so I can coach you with real numbers."
-            ),
+            response=f"{greeting} {name}! {body}",
             suggestions=["How do I connect MoMo?", "What can you coach me on?", "Help me save"],
             category=None,
         )
@@ -469,6 +467,28 @@ def _greeting_for_language(language: str | None) -> str:
     if not language:
         return "Howzit"
     return _GREETINGS.get(language.lower(), "Howzit")
+
+
+_EMPTY_WALLET_BODY = {
+    "zu": "Ikhasi lakho alinazimali — asikho okuthengiselwayo okufakwe manje. Xhumana ne-MoMo yakho wenze ukufakwa kokuqala ukuze ngikufundise ngezinombolo zangempela.",
+    "xh": "Ingxowa yakho ayinazimali — akukho ntengiso efakweyo okwangoku. Qhagamshela i-MoMo yakho wenze ukufakwa kokuqala ukuze ndikufundise ngeenombolo zangempela.",
+    "nso": "Wallet ya gago ga e na tšhelete — ga go na thekišo ye e dirilwego bjale. Kopana le MoMo ya gago o dire deposit ya mathomo gore ngo go rute ka dipalo tša nnete.",
+    "st": "Wallet ya hao ha e na tjhelete — ha ho thekiso e entseng jwale. Hokahanya MoMo ya hao o etse depositi ya pele hore ke ruteng ka linomoro tsa nnete.",
+    "af": "Jou beursie is leeg — geen transaksies nie. Koppel jou MoMo en maak jou eerste deposito sodat ek jou met werklike syfers kan adviseer.",
+    "en": "Your wallet is empty — no transactions yet. Connect your MoMo or make your first deposit so I can coach you with real numbers.",
+    "sw": "Mkoba wako hauna pesa — hakuna miamala bado. Unganisha MoMo yako au fanya amana ya kwanza ili nikufundishe kwa nambari halisi.",
+    "ha": "Wallet ɗinka ba shi da kuɗi — ba a yi mu'amala ba tukuna. Haɗa MoMo ɗinka ko yi ajiyar kuɗi ta farko don in koya maka da lambobi na gaske.",
+    "yo": "Àpò rẹ kò ní owó — kò sí ìṣe ìnáwó lónìí. So MoMo rẹ pọ̀ tàbí ṣe ìfipamọ́ àkọ́kọ́ kí n lè kọ́ ọ́ pẹ̀lú nọ́mbà gidi.",
+    "ig": "Obere gị enweghi ego — enweghi azụmahịa ugbu a. Jikọọ MoMo gị ma ọ bụ mee nkwụnye ego mbụ ka m ga-akụzi gị site na ọnụọgụ dị adị.",
+    "pt": "A sua carteira está vazia — sem transações ainda. Conecte o seu MoMo ou faça o primeiro depósito para eu o orientar com números reais.",
+    "fr": "Votre portefeuille est vide — aucune transaction pour l'instant. Connectez votre MoMo ou faites un premier dépôt afin que je vous conseille avec de vrais chiffres.",
+}
+
+
+def _empty_wallet_body_for_language(language: str | None) -> str:
+    if not language:
+        return _EMPTY_WALLET_BODY["en"]
+    return _EMPTY_WALLET_BODY.get(language.lower(), _EMPTY_WALLET_BODY["en"])
 
 
 def _fallback_response(message: str, income: float, expenses: float, name: str) -> CoachingResponse:
