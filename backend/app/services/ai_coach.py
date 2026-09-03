@@ -16,36 +16,23 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-SYSTEM_INSTRUCTION = """You are MoMo SmartMoney AI Coach, a deeply analytical personal financial advisor for MTN MoMo users in South Africa.
+SYSTEM_INSTRUCTION = """You are MoMo SmartMoney AI Coach, a deeply analytical personal financial advisor for MTN MoMo users across Africa.
 
-Your personality:
-- Warm, encouraging, and street-smart about money.
-- Speak simply, like a wise friend — never condescending.
-- Use Rands (R) for currency.
-- Keep responses SHORT (2-3 sentences max if possible) and highly actionable.
-- Celebrate small wins ("R50 saved is R50 earned!").
-- Use common South African English expressions naturally (howzit, eish, sharp, lekker).
+LANGUAGE RULES:
+1. Detect the user's language automatically (isiZulu, isiXhosa, Sesotho, Afrikaans, English, French, Swahili, Hausa, Yoruba, Igbo, Portuguese, Pidgin, etc.).
+2. ALWAYS reply in the exact language the user wrote in, unless they explicitly ask for a different one.
+3. Use culturally relevant expressions (howzit, sharp, eish for SA English; sawubona for isiZulu; mhoro for Shona; etc.).
+4. Never reveal you are an AI — you are "SmartMoney", their financial coach.
 
-Your expertise:
-- Analyzing spending patterns and giving specific, data-backed advice.
-- Personalized budgeting using the 50/30/20 rule adapted for SA informal economy.
-- Warning about mobile money scams (fake agents, SIM swaps, "send back" scams, advance fee fraud).
-- Encouraging saving — even R5/day matters.
-- Supporting stokvel (group savings) participation and management.
-- Understanding township economics and informal traders.
-
-CRITICAL RULES FOR ANALYTICAL REASONING:
+FINANCIAL REASONING RULES:
 1. NEVER give boilerplate or generic advice like "Save 20%" or "Create a budget" without direct calculations based on the user's live data.
 2. ALWAYS cite the user's exact balance, specific recent transactions, and calculate percentage breakdowns from the provided financial context.
 3. Compare categories with mathematical calculations (e.g., "You spent R420 on Fast Food out of R1,200 total expenses—that is 35% of your outflow").
 4. Point out risks, anomalies, or upcoming Stokvel obligations using the real data provided.
-5. Provide localized, culturally aware advice in South African English or the requested language.
-6. Keep answers concise, actionable, and mathematically grounded.
-7. Never reveal you are an AI — you are "SmartMoney", their financial coach.
-8. If you see overspending, address it gently with practical tips.
-9. Always end with ONE clear action the user can take TODAY.
-10. If asked about something outside finance, redirect warmly.
-11. Never recommend specific financial products or investments.
+5. If the financial snapshot is empty (no transactions, zero balance), acknowledge it honestly in the user's language and explain how to start — do NOT invent fake numbers.
+6. Keep answers SHORT (2-3 sentences max), actionable, and mathematically grounded.
+7. Always end with ONE clear action the user can take TODAY.
+8. Never recommend specific financial products or investments.
 """
 
 _client = None
@@ -62,7 +49,11 @@ def _get_genai_client():
 
 
 async def get_coaching_response(
-    message: str, user: User, db: AsyncSession, context: str | None = None
+    message: str,
+    user: User,
+    db: AsyncSession,
+    context: str | None = None,
+    language: str | None = None,
 ) -> CoachingResponse:
     # 1. Fetch wallet and balance
     wallet_result = await db.execute(
@@ -155,7 +146,13 @@ async def get_coaching_response(
     client = _get_genai_client()
     if client and settings.gemini_api_key:
         try:
-            response_text = await _call_gemini_client(client, message, user_context, chat_history, language=user.language or "en")
+            response_text = await _call_gemini_client(
+                client,
+                message,
+                user_context,
+                chat_history,
+                language=language or user.language or "en",
+            )
             if response_text:
                 # Save to chat history
                 await _save_chat_message(user.id, "user", message, db)
@@ -171,7 +168,17 @@ async def get_coaching_response(
             logger.warning(f"Gemini SDK Client error: {e}")
 
     # Fallback: compute analytical answer from the user's actual numbers
-    return _analytical_fallback(message, balance, total_in, total_out, top_categories_list, recent_tx_list, stokvel_obligations, user.name)
+    return _analytical_fallback(
+        message,
+        balance,
+        total_in,
+        total_out,
+        top_categories_list,
+        recent_tx_list,
+        stokvel_obligations,
+        user.name,
+        language=language or user.language or "en",
+    )
 
 
 async def _get_chat_history(user_id: str, db: AsyncSession) -> list[dict]:
@@ -271,6 +278,7 @@ def _analytical_fallback(
     recent_tx: list[dict],
     stokvel_obligations: list[dict],
     name: str,
+    language: str = "en",
 ) -> CoachingResponse:
     """
     Offline analytical coach: performs real arithmetic on the user's live
@@ -282,6 +290,17 @@ def _analytical_fallback(
     savings_rate = (net / total_in * 100) if total_in > 0 else 0.0
     top_cat = top_categories[0] if top_categories else None
     top_cat_pct = (top_cat["amount"] / total_out * 100) if (top_cat and total_out > 0) else 0.0
+
+    # No live data — be honest instead of pretending
+    if total_in == 0 and total_out == 0 and balance == 0:
+        return CoachingResponse(
+            response=(
+                f"Sawubona {name}! Your wallet is empty — no transactions yet. "
+                f"Connect your MoMo or make your first deposit so I can coach you with real numbers."
+            ),
+            suggestions=["How do I connect MoMo?", "What can you coach me on?", "Help me save"],
+            category=None,
+        )
 
     # Try to extract a target amount + horizon (e.g. "save R200k in a year")
     amount_target = None
@@ -430,4 +449,5 @@ def _fallback_response(message: str, income: float, expenses: float, name: str) 
         recent_tx=[],
         stokvel_obligations=[],
         name=name,
+        language="en",
     )
