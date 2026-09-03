@@ -57,17 +57,12 @@ async def create_stokvel(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Rule: at least one member must be an MTN subscriber.
-    # The creator is the only member at creation, so their phone must be MTN.
+    # MoMo Stokvels work best when at least one member is on MTN (so payouts
+    # can flow through MoMo), but we no longer block creation on this — a
+    # group can be created now and an MTN member linked before the first
+    # payout cycle.
     prefixes = [p for p in settings.mtn_prefixes.split(",") if p]
-    if not is_mtn_number(user.phone_number, prefixes, settings.mtn_default_country_code):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "At least one member must have an MTN mobile number. "
-                "Your registered number does not appear to be an MTN number."
-            ),
-        )
+    creator_is_mtn = is_mtn_number(user.phone_number, prefixes, settings.mtn_default_country_code)
 
     stokvel = Stokvel(
         name=data.name,
@@ -91,7 +86,11 @@ async def create_stokvel(
     await db.commit()
     await db.refresh(stokvel)
 
-    return _stokvel_response(stokvel, member_count=1, mtn_member_count=1)
+    return _stokvel_response(
+        stokvel,
+        member_count=1,
+        mtn_member_count=1 if creator_is_mtn else 0,
+    )
 
 
 @router.get("/", response_model=list[StokvelResponse])
