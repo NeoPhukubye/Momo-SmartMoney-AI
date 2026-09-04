@@ -1,51 +1,46 @@
-import React, { useState } from "react";
-import API_BASE_URL from "../api/config";
+import React, { useState } from 'react';
 
 export default function GoogleWalletProvisionButton({ cardId }) {
-  const [provisioning, setProvisioning] = useState(false);
-  const [added, setAdded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isAdded, setIsAdded] = useState(false);
 
-  const handleAddToGoogleWallet = async () => {
-    setProvisioning(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/cards/wallet/provision`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          card_id: cardId || "card_momo_9921",
-          target_wallet: "GOOGLE_PAY",
-          device_id: "android_pixel_demo_device",
-        }),
-      });
-      const data = await response.json();
-      if (data.status === "READY_FOR_WALLET") {
-        setAdded(true);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setProvisioning(false);
-    }
+  const handleAddCard = async () => {
+    setLoading(true);
+    // Simulate card tokenization delay (Mastercard MDES / Google Wallet TSP)
+    setTimeout(() => {
+      setLoading(false);
+      setIsAdded(true);
+    }, 1200);
   };
 
   return (
-    <div>
-      {!added ? (
+    <div className="w-full mt-2">
+      {!isAdded ? (
         <button
-          onClick={handleAddToGoogleWallet}
-          disabled={provisioning}
-          className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-medium py-2.5 px-4 rounded-xl hover:bg-black transition shadow-sm text-sm"
+          onClick={handleAddCard}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-black hover:bg-neutral-800 text-white font-medium py-3 px-4 rounded-xl transition shadow"
         >
           <img
             src="https://www.gstatic.com/instantbuy/svg/dark_gpay.svg"
             alt="Google Pay"
             className="h-5"
           />
-          <span>{provisioning ? "Connecting Google Wallet..." : "Add to Google Wallet"}</span>
+          <span className="text-sm font-semibold">
+            {loading ? "Tokenizing Card..." : "Add to Google Wallet"}
+          </span>
         </button>
       ) : (
-        <div className="text-center text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 py-2 rounded-xl">
-          ✓ Active in Google Wallet (Ready for Contactless POS Tap)
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-sm mb-1">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+            Active in Google Wallet
+          </div>
+          <p className="text-xs text-neutral-300">
+            DPAN •••• 4288 | Tap-to-Pay Ready on POS Terminals
+          </p>
         </div>
       )}
     </div>

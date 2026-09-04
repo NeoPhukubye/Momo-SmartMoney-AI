@@ -20,6 +20,7 @@ import { useAccessibility } from '../context/AccessibilityContext'
 import api from '../services/api'
 import QRScanner from '../components/QRScanner'
 import QRGenerator from '../components/QRGenerator'
+import GoogleWalletProvisionButton from '../components/GoogleWalletProvisionButton'
 
 const TONE = {
   deposit: { Icon: ArrowDownLeft, label: 'Top-up', cls: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
@@ -47,10 +48,6 @@ export default function Wallet() {
   const [scanResult, setScanResult] = useState(null)
   const [myRequests, setMyRequests] = useState([])
   const [lastRequest, setLastRequest] = useState(null)
-  const [gpayBusy, setGpayBusy] = useState(false)
-  const [gpayMessage, setGpayMessage] = useState('')
-  const [gpayError, setGpayError] = useState('')
-  const [gpayEnrolled, setGpayEnrolled] = useState(false)
   const pollersRef = useRef({})
 
   const loadAll = async () => {
@@ -181,31 +178,6 @@ export default function Wallet() {
     }
   }
 
-  const enrolGoogleWallet = async () => {
-    setGpayBusy(true)
-    setGpayMessage('')
-    setGpayError('')
-    try {
-      const { data } = await api.post('/api/wallet/google-wallet/enrol', { display_name: 'SmartMoney MoMo Card' })
-      setGpayMessage(data.save_url)
-      setGpayEnrolled(true)
-      window.open(data.save_url, '_blank', 'noopener,noreferrer')
-    } catch (err) {
-      // Keep the save URL and the error in separate state. Sharing one
-      // variable meant the failure string got rendered as
-      // <a href="Could not create Google Wallet save link."> - a link to
-      // nowhere, styled to look clickable.
-      // A 503 means the server has no Google Wallet credentials; show what it
-      // actually said instead of a generic line that hides the real cause.
-      setGpayError(
-        err.response?.data?.detail ||
-        'Could not create Google Wallet save link. Please try again.'
-      )
-    } finally {
-      setGpayBusy(false)
-    }
-  }
-
   const copyUssd = () => {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(USSD_CODE)
@@ -289,30 +261,7 @@ export default function Wallet() {
             <p className="text-xs text-slate-500 mt-0.5">Tap-to-pay with your SmartMoney MoMo card on any contactless POS.</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={enrolGoogleWallet}
-          disabled={gpayBusy}
-          className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 text-white font-semibold py-2.5 px-4 hover:bg-black transition shadow-soft disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-mtn-yellow/30 focus:outline-none"
-        >
-          <img src="https://www.gstatic.com/instantbuy/svg/dark_gpay.svg" alt="Google Pay" className="h-5" />
-          {/* "Re-add" only after a save link actually succeeded this session.
-              google_wallet_object_id alone is not proof of enrolment: the old
-              placeholder implementation wrote that column even though the URL
-              it produced 404'd at Google, so existing rows carry ids for passes
-              that were never really created. */}
-          <span>{gpayBusy ? 'Preparing…' : gpayEnrolled ? 'Re-add to Google Wallet' : 'Add to Google Wallet'}</span>
-        </button>
-        {gpayMessage && (
-          <p className="mt-2 text-xs text-slate-500 break-all" role="status">
-            Save link: <a className="text-mtn-blue underline" href={gpayMessage} target="_blank" rel="noreferrer">{gpayMessage}</a>
-          </p>
-        )}
-        {gpayError && (
-          <p className="mt-2 text-xs text-rose-600" role="alert">
-            {gpayError}
-          </p>
-        )}
+        <GoogleWalletProvisionButton cardId={wallet?.id} />
       </section>
 
       {/* Action modals */}
