@@ -50,29 +50,25 @@ function App() {
     )
   }
 
-  if (!token) {
-    return (
-      <AccessibilityProvider>
-        <Login onLogin={handleLogin} />
-      </AccessibilityProvider>
-    )
-  }
-
   return (
     <AccessibilityProvider>
       <BrowserRouter basename="/Momo-SmartMoney-AI">
-        <Layout user={user} onLogout={handleLogout}>
-          <div className="page-transition">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/stokvel" element={<Stokvel />} />
-              <Route path="/wallet" element={<Wallet />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </div>
-        </Layout>
+        {!token ? (
+          <Login onLogin={handleLogin} />
+        ) : (
+          <Layout user={user} onLogout={handleLogout}>
+            <div className="page-transition">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/stokvel" element={<Stokvel />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </div>
+          </Layout>
+        )}
       </BrowserRouter>
     </AccessibilityProvider>
   )

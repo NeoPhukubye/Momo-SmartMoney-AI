@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export default function GoogleSignIn({ onLoginSuccess }) {
+export default function GoogleSignIn({ onLogin, onError }) {
   const buttonRef = useRef(null);
   const navigate = useNavigate();
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -19,14 +19,14 @@ export default function GoogleSignIn({ onLoginSuccess }) {
       );
       const user = JSON.parse(jsonPayload);
 
-      localStorage.setItem('auth_token', response.credential);
-      localStorage.setItem('user_name', user.name || 'User');
-      localStorage.setItem('user_email', user.email || '');
+      localStorage.setItem('token', response.credential);
+      localStorage.setItem('user', JSON.stringify(user));
 
-      if (onLoginSuccess) onLoginSuccess(user);
+      onLogin?.(user, response.credential);
       navigate('/');
     } catch (err) {
       console.error('Failed to parse Google credential token:', err);
+      onError?.(err);
     }
   };
 
@@ -48,10 +48,10 @@ export default function GoogleSignIn({ onLoginSuccess }) {
 
   // Demo fallback button if VITE_GOOGLE_CLIENT_ID is not configured
   const handleDemoSignIn = () => {
-    localStorage.setItem('auth_token', 'demo_token_authenticated');
-    localStorage.setItem('user_name', 'Neo Phukubye');
-    localStorage.setItem('user_email', 'demo@smartmoney.momo');
-    if (onLoginSuccess) onLoginSuccess({ name: 'Neo Phukubye', email: 'demo@smartmoney.momo' });
+    const user = { name: 'Neo Phukubye', email: 'demo@smartmoney.momo' };
+    localStorage.setItem('token', 'demo_token_authenticated');
+    localStorage.setItem('user', JSON.stringify(user));
+    onLogin?.(user, 'demo_token_authenticated');
     navigate('/');
   };
 
