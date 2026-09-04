@@ -11,8 +11,38 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="./manifest.json" />
     <title>SmartMoney AI — Your Financial Coach</title>
-    <!-- OpenDyslexic font for dyslexia-friendly mode -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/opendyslexic@1.0.3/open-dyslexic.css" />
+    <!-- OpenDyslexic font for dyslexia-friendly mode (self-hosted via raw GitHub; the previous jsDelivr URL 404s) -->
+    <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
+    <style>
+      @font-face {
+        font-family: 'OpenDyslexic';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('https://raw.githubusercontent.com/antijingoist/opendyslexic/master/compiled/OpenDyslexic-Regular.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'OpenDyslexic';
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url('https://raw.githubusercontent.com/antijingoist/opendyslexic/master/compiled/OpenDyslexic-Italic.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'OpenDyslexic';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('https://raw.githubusercontent.com/antijingoist/opendyslexic/master/compiled/OpenDyslexic-Bold.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'OpenDyslexic';
+        font-style: italic;
+        font-weight: 700;
+        font-display: swap;
+        src: url('https://raw.githubusercontent.com/antijingoist/opendyslexic/master/compiled/OpenDyslexic-Bold-Italic.woff2') format('woff2');
+      }
+    </style>
     <!-- Google Identity Services (Sign-In with Google) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Google Pay JavaScript SDK -->

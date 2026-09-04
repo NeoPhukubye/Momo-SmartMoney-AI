@@ -42,13 +42,18 @@ html.font-size-medium { font-size: 16px; }
 html.font-size-large { font-size: 20px; }
 html.font-size-extra_large { font-size: 24px; }
 
-/* ===== ACCESSIBILITY: Dyslexia-Friendly Font ===== */
+/* ===== ACCESSIBILITY: Dyslexia-Friendly Font =====
+   The bottom-heavy letterforms, slanted stems, and wide interior counters that
+   distinguish b/d/p/q are baked into the OpenDyslexic glyphs themselves; CSS
+   just makes sure the family is selected and the line/word spacing is loose
+   enough for the wider glyph footprint. */
 html.dyslexia-font,
+html.dyslexia-font body,
 html.dyslexia-font * {
-  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Arial', sans-serif !important;
-  letter-spacing: 0.05em;
-  word-spacing: 0.1em;
-  line-height: 1.6;
+  font-family: 'OpenDyslexic', -apple-system, 'Segoe UI', 'Comic Sans MS', sans-serif !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.08em !important;
+  line-height: 1.6 !important;
 }
 
 /* ===== ACCESSIBILITY: High Contrast Mode ===== */
