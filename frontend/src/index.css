@@ -48,7 +48,7 @@ html.dyslexia-font * {
   font-family: 'OpenDyslexic', 'Comic Sans MS', 'Arial', sans-serif !important;
   letter-spacing: 0.05em;
   word-spacing: 0.1em;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 /* ===== ACCESSIBILITY: High Contrast Mode ===== */
